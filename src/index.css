@@ -1,0 +1,103 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Space Grotesk", "Inter", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  /* Brand Theme Colors (Overriding Blue to premium Deep Emerald for instant, perfectly cohesive, safe system-wide adoption) */
+  --color-blue-50: #ECFDF5;
+  --color-blue-100: #D1FAE5;
+  --color-blue-200: #A7F3D0;
+  --color-blue-300: #6EE7B7;
+  --color-blue-400: #34D399;
+  --color-blue-500: #10B981;
+  --color-blue-600: #059669;
+  --color-blue-700: #047857;
+  --color-blue-800: #065F46;
+  --color-blue-900: #064E3B;
+  --color-blue-950: #022C22;
+
+  --color-primary: #064E3B;
+  --color-secondary: #14B8A6;
+  --color-accent: #84CC16;
+  --color-success: #10B981;
+  --color-warning: #F59E0B;
+  --color-error: #EF4444;
+  --color-bg: #FCFCFC;
+  --color-surface: #FFFFFF;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: #FCFCFC;
+  color: #0F172A;
+}
+
+/* Custom fade-in and slide-up micro-animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(12px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-slideUp {
+  animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Custom scrollbar hiding utility */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+@keyframes slideInLeft {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+
+.animate-slideInLeft {
+  animation: slideInLeft 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes fadeInDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fadeInDown {
+  animation: fadeInDown 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Fine-tuned styling overlays for elegant interactive inputs */
+input:focus, select:focus, textarea:focus {
+  border-color: #059669 !important;
+  box-shadow: 0 0 0 2px rgba(5, 150, 105, 0.1) !important;
+}
+
+/* Premium micro-interactions for modern elements */
+.premium-btn-shadow {
+  box-shadow: 0 4px 14px 0 rgba(6, 78, 59, 0.15);
+}
+.premium-card-shadow {
+  box-shadow: 0 10px 30px -10px rgba(15, 23, 42, 0.04);
+}
+

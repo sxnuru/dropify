@@ -1,0 +1,6 @@
+{
+  "name": "DreamShelf",
+  "description": "The future of online shopping: a premium, Awwwards-worthy, immersive multi-category marketplace platform with a full design system, seller dashboard, and integrated server-side Gemini AI personal shopper.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
