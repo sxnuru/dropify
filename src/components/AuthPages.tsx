@@ -57,15 +57,14 @@ export default function AuthPages({ onSuccess, onCancel, initialView = 'login' }
     setIsLoading(true);
     setTimeout(() => {
       setIsLoading(false);
-      // Let's sign them in with a mock user. If they logged in with the demo email, keep the same details
-      const user: UserProfile = {
-        fullName: fullName || (email === 'aria.malik@vanguard.co' ? 'Aria Malik' : 'Aesthetic Connoisseur'),
-        email: email,
-        phone: phone || '+92 333 4567890',
-        status: 'Platinum Tier',
-        memberSince: 'January 2026',
-        loyaltyPoints: 1250
-      };
+  const user: UserProfile = {
+  fullName: fullName || 'DreamShelf Customer',
+  email,
+  phone: phone || '+44 7700 900123',
+  status: 'Platinum Tier',
+  memberSince: 'January 2026',
+  loyaltyPoints: 1250
+};
       onSuccess(user);
     }, 1000);
   };
@@ -280,41 +279,26 @@ export default function AuthPages({ onSuccess, onCancel, initialView = 'login' }
               <label className="block text-[9px] font-mono text-slate-400 uppercase font-bold tracking-wider mb-1">Full Legal Name</label>
               <div className="relative">
                 <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input 
-                  type="text"
-                  placeholder="Aria Malik"
-                  value={fullName}
-                  onChange={(e) => { setFullName(e.target.value); setError(''); }}
-                  className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-xs focus:bg-white focus:border-blue-500 focus:outline-none transition-all text-slate-800 font-medium"
-                />
-              </div>
-            </div>
+    <input 
+  type="text"
+  placeholder="Olivia Thompson"
+  value={fullName}
+  onChange={(e) => { setFullName(e.target.value); setError(''); }}
+/>
 
-            <div className="space-y-1">
-              <label className="block text-[9px] font-mono text-slate-400 uppercase font-bold tracking-wider mb-1">Email Address</label>
-              <div className="relative">
-                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input 
-                  type="email"
-                  placeholder="sarah@example.com"
-                  value={email}
-                  onChange={(e) => { setEmail(e.target.value); setError(''); }}
-                  className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-xs focus:bg-white focus:border-blue-500 focus:outline-none transition-all text-slate-800 font-medium"
-                />
-              </div>
-            </div>
+<input 
+  type="email"
+  placeholder="olivia.thompson@example.co.uk"
+  value={email}
+  onChange={(e) => { setEmail(e.target.value); setError(''); }}
+/>
 
-            <div className="space-y-1">
-              <label className="block text-[9px] font-mono text-slate-400 uppercase font-bold tracking-wider mb-1">Phone Directory Coordinate</label>
-              <div className="relative">
-                <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input 
-                  type="tel"
-                  placeholder="+92 300 1234567"
-                  value={phone}
-                  onChange={(e) => { setPhone(e.target.value); setError(''); }}
-                  className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-xs focus:bg-white focus:border-blue-500 focus:outline-none transition-all text-slate-800 font-medium"
-                />
+<input 
+  type="tel"
+  placeholder="+44 7700 900123"
+  value={phone}
+  onChange={(e) => { setPhone(e.target.value); setError(''); }}
+/>
               </div>
             </div>
 
@@ -333,7 +317,9 @@ export default function AuthPages({ onSuccess, onCancel, initialView = 'login' }
             </div>
 
             <div className="space-y-1">
-              <label className="block text-[9px] font-mono text-slate-400 uppercase font-bold tracking-wider mb-1">Verify Password</label>
+              <label className="block text-[9px] font-mono text-slate-400 uppercase font-bold tracking-wider mb-1">
+  Phone Number
+</label>
               <div className="relative">
                 <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <input 

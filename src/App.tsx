@@ -1,11 +1,12 @@
+import { PRODUCTS } from './data';
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Product, CartItem, Order, UserProfile } from './types';
-import { PRODUCTS } from './data';
+import { getProducts } from './firebaseProducts';
 import HomePage from './components/HomePage';
 import CategoryShop from './components/CategoryShop';
 import ProductDetails from './components/ProductDetails';
@@ -33,6 +34,7 @@ const megaMenuColumns = [
       { name: 'Accessories', desc: 'Bespoke glass & carries' }
     ]
   },
+
   {
     title: 'Electronics & Tools',
     icon: <Settings className="w-3.5 h-3.5 text-blue-500" />,
@@ -114,14 +116,14 @@ export default function App() {
   const [showUndoToast, setShowUndoToast] = useState(false);
 
   // Mock User Profile State
-  const [currentUser, setCurrentUser] = useState<UserProfile | null>({
-    fullName: 'Aria Malik',
-    email: 'aria.malik@vanguard.co',
-    phone: '+92 333 4567890',
-    status: 'Platinum Tier',
-    memberSince: 'January 2026',
-    loyaltyPoints: 1250
-  });
+const [currentUser, setCurrentUser] = useState<UserProfile | null>({
+  fullName: 'Oliver Smith',
+  email: 'oliver.smith@example.co.uk',
+  phone: '+44 7700 900123',
+  status: 'Platinum Tier',
+  memberSince: 'January 2026',
+  loyaltyPoints: 1250
+});
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
 
   const handleUpdateProfile = (updatedUser: { fullName: string; email: string; phone: string }) => {
@@ -135,6 +137,27 @@ export default function App() {
       };
     });
   };
+
+  useEffect(() => {
+  async function loadProducts() {
+    try {
+      console.log("Loading products from Firebase...");
+
+      const firebaseProducts = await getProducts();
+
+      console.log("Firebase returned:", firebaseProducts);
+
+      if (firebaseProducts.length > 0) {
+        setProductsList(firebaseProducts as Product[]);
+        setSelectedProduct(firebaseProducts[0] as Product);
+      }
+    } catch (error) {
+      console.error("Error loading Firebase products:", error);
+    }
+  }
+
+  loadProducts();
+}, []);
 
   // Redirect to login if account dashboard is accessed while logged out
   React.useEffect(() => {
@@ -151,15 +174,13 @@ export default function App() {
   const [isAddressValidated, setIsAddressValidated] = useState(false);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'card' | 'biometric' | 'cod'>('cod');
   
-  // Shipping details
-  const [shippingName, setShippingName] = useState('Aria Malik');
-  const [shippingStreet, setShippingStreet] = useState('House 45-B, Sector Z, Street 12');
-  const [shippingCity, setShippingCity] = useState('Lahore');
-  const [shippingArea, setShippingArea] = useState('DHA Phase 3');
-  const [shippingState, setShippingState] = useState('Punjab');
-  const [shippingZip, setShippingZip] = useState('54000');
-  const [shippingPhone, setShippingPhone] = useState('+92 333 4567890');
-  const [paymentCard, setPaymentCard] = useState('4242');
+  const [shippingName, setShippingName] = useState('Oliver Smith');
+const [shippingStreet, setShippingStreet] = useState('221B Baker Street');
+const [shippingCity, setShippingCity] = useState('London');
+const [shippingArea, setShippingArea] = useState('Marylebone');
+const [shippingState, setShippingState] = useState('Greater London');
+const [shippingZip, setShippingZip] = useState('NW1 6XE');
+const [shippingPhone, setShippingPhone] = useState('+44 7700 900123');
 
   // Sync shipping info with active profile changes
   React.useEffect(() => {
@@ -428,7 +449,7 @@ export default function App() {
         state: shippingState,
         area: shippingArea,
         zipCode: shippingZip,
-        country: 'Pakistan',
+        country: 'United Kingdom',
         phone: shippingPhone
       },
       paymentMethod: selectedPaymentMethod === 'cod' ? 'Cash on Delivery (COD)' : selectedPaymentMethod === 'card' ? `Visa ending in ${paymentCard}` : 'Instant Biometric Secured Token Pay',
@@ -1413,92 +1434,129 @@ export default function App() {
                       <input 
                         type="text" 
                         required 
-                        placeholder="e.g. +92 300 1234567"
+                        placeholder="e.g'+44 7700 900123'"
                         value={shippingPhone} 
                         onChange={(e) => setShippingPhone(e.target.value)} 
                         className="w-full px-4 py-2.5 bg-[#F6FAF6] border border-emerald-100 focus:bg-white rounded-xl focus:outline-none focus:border-emerald-500 transition-colors text-slate-800 font-mono" 
                       />
                     </div>
                     <div>
-                      <label className="block text-[9px] font-mono text-slate-400 uppercase mb-1 font-bold">Province</label>
-                      <select 
-                        required
-                        value={shippingState} 
-                        onChange={(e) => { setShippingState(e.target.value); setIsAddressValidated(false); }} 
-                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 hover:border-slate-300 focus:bg-white rounded-xl focus:outline-none focus:border-blue-500 transition-colors text-xs font-sans text-slate-800"
-                      >
-                        <option value="Punjab">Punjab</option>
-                        <option value="Sindh">Sindh</option>
-                        <option value="Khyber Pakhtunkhwa">Khyber Pakhtunkhwa (KPK)</option>
-                        <option value="Balochistan">Balochistan</option>
-                        <option value="Islamabad Capital Territory">Islamabad Capital Territory (ICT)</option>
-                        <option value="Gilgit-Baltistan">Gilgit-Baltistan (GB)</option>
-                        <option value="Azad Jammu & Kashmir">Azad Jammu & Kashmir (AJK)</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-[9px] font-mono text-slate-400 uppercase mb-1 font-bold">City</label>
-                      <input 
-                        type="text" 
-                        required 
-                        placeholder="e.g. Lahore, Karachi"
-                        value={shippingCity} 
-                        onChange={(e) => { setShippingCity(e.target.value); setIsAddressValidated(false); }} 
-                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 hover:border-slate-300 focus:bg-white rounded-xl focus:outline-none focus:border-blue-500 transition-colors" 
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[9px] font-mono text-slate-400 uppercase mb-1 font-bold">Area / Sector / Society</label>
-                      <input 
-                        type="text" 
-                        required 
-                        placeholder="e.g. DHA Phase 3, Clifton"
-                        value={shippingArea} 
-                        onChange={(e) => { setShippingArea(e.target.value); setIsAddressValidated(false); }} 
-                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 hover:border-slate-300 focus:bg-white rounded-xl focus:outline-none focus:border-blue-500 transition-colors" 
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[9px] font-mono text-slate-400 uppercase mb-1 font-bold">Postal Code</label>
-                      <input 
-                        type="text" 
-                        required 
-                        placeholder="e.g. 54000"
-                        value={shippingZip} 
-                        onChange={(e) => { setShippingZip(e.target.value.replace(/\D/g,'')); setIsAddressValidated(false); }} 
-                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 hover:border-slate-300 focus:bg-white rounded-xl focus:outline-none focus:border-blue-500 transition-colors font-mono" 
-                      />
-                    </div>
-                    <div className="md:col-span-2">
-                      <label className="block text-[9px] font-mono text-slate-400 uppercase mb-1 font-bold">Complete Address (House, Street, etc.)</label>
-                      <div className="relative">
-                        <input 
-                          type="text" 
-                          required 
-                          placeholder="e.g. House 45-B, Sector Z, Street 12"
-                          value={shippingStreet} 
-                          onChange={(e) => { setShippingStreet(e.target.value); setIsAddressValidated(false); }} 
-                          className="w-full pl-4 pr-24 py-2.5 bg-slate-50 border border-slate-200 hover:border-slate-300 focus:bg-white rounded-xl focus:outline-none focus:border-blue-500 transition-colors" 
-                        />
-                        <button
-                          type="button"
-                          onClick={handleValidateAddress}
-                          disabled={!shippingStreet || isAddressValidating}
-                          className="absolute right-2 top-2 px-2.5 py-1 bg-slate-900 hover:bg-blue-600 disabled:bg-slate-300 text-white font-mono text-[9px] font-bold rounded-lg transition-colors cursor-pointer"
-                        >
-                          {isAddressValidating ? "Verifying..." : "VALIDATE"}
-                        </button>
-                      </div>
-                      {isAddressValidated && (
-                        <span className="block text-[9px] text-emerald-600 font-sans mt-1.5 font-bold flex items-center gap-1">
-                          ✓ Address Registered for Courier Cash on Delivery (COD) Dispatch
-                        </span>
-                      )}
-                    </div>
-                  </div>
+                    <label className="block text-[9px] font-mono text-slate-400 uppercase mb-1 font-bold">
+  County
+</label>
 
-                  {/* Delivery Speed Selector Tiers */}
-                  <div className="space-y-2.5 pt-2">
+<select
+  required
+  value={shippingState}
+  onChange={(e) => {
+    setShippingState(e.target.value);
+    setIsAddressValidated(false);
+  }}
+  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 hover:border-slate-300 focus:bg-white rounded-xl focus:outline-none focus:border-blue-500 transition-colors text-xs font-sans text-slate-800"
+>
+  <option value="Greater London">Greater London</option>
+  <option value="Greater Manchester">Greater Manchester</option>
+  <option value="West Midlands">West Midlands</option>
+  <option value="Merseyside">Merseyside</option>
+  <option value="West Yorkshire">West Yorkshire</option>
+  <option value="Kent">Kent</option>
+  <option value="Surrey">Surrey</option>
+  <option value="Essex">Essex</option>
+  <option value="Hampshire">Hampshire</option>
+  <option value="Lancashire">Lancashire</option>
+</select>
+           </div>
+
+<div>
+  <label className="block text-[9px] font-mono text-slate-400 uppercase mb-1 font-bold">
+    City
+  </label>
+  <input
+    type="text"
+    required
+    placeholder="e.g. London, Manchester"
+    value={shippingCity}
+    onChange={(e) => {
+      setShippingCity(e.target.value);
+      setIsAddressValidated(false);
+    }}
+    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 hover:border-slate-300 focus:bg-white rounded-xl focus:outline-none focus:border-blue-500 transition-colors"
+  />
+</div>
+
+<div>
+  <label className="block text-[9px] font-mono text-slate-400 uppercase mb-1 font-bold">
+    Town / District
+  </label>
+  <input
+    type="text"
+    required
+    placeholder="e.g. Westminster, Kensington"
+    value={shippingArea}
+    onChange={(e) => {
+      setShippingArea(e.target.value);
+      setIsAddressValidated(false);
+    }}
+    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 hover:border-slate-300 focus:bg-white rounded-xl focus:outline-none focus:border-blue-500 transition-colors"
+  />
+</div>
+
+<div>
+  <label className="block text-[9px] font-mono text-slate-400 uppercase mb-1 font-bold">
+    Postcode
+  </label>
+  <input
+    type="text"
+    required
+    placeholder="e.g. SW1A 1AA"
+    value={shippingZip}
+    onChange={(e) => {
+      setShippingZip(e.target.value.toUpperCase());
+      setIsAddressValidated(false);
+    }}
+    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 hover:border-slate-300 focus:bg-white rounded-xl focus:outline-none focus:border-blue-500 transition-colors font-mono"
+  />
+</div>
+
+<div className="md:col-span-2">
+  <label className="block text-[9px] font-mono text-slate-400 uppercase mb-1 font-bold">
+    Street Address
+  </label>
+
+  <div className="relative">
+    <input
+      type="text"
+      required
+      placeholder="e.g. Flat 5, 221B Baker Street"
+      value={shippingStreet}
+      onChange={(e) => {
+        setShippingStreet(e.target.value);
+        setIsAddressValidated(false);
+      }}
+      className="w-full pl-4 pr-24 py-2.5 bg-slate-50 border border-slate-200 hover:border-slate-300 focus:bg-white rounded-xl focus:outline-none focus:border-blue-500 transition-colors"
+    />
+
+    <button
+      type="button"
+      onClick={handleValidateAddress}
+      disabled={!shippingStreet || isAddressValidating}
+      className="absolute right-2 top-2 px-2.5 py-1 bg-slate-900 hover:bg-blue-600 disabled:bg-slate-300 text-white font-mono text-[9px] font-bold rounded-lg transition-colors cursor-pointer"
+    >
+      {isAddressValidating ? "Checking..." : "CHECK"}
+    </button>
+  </div>
+
+  {isAddressValidated && (
+  <span className="block text-[9px] text-emerald-600 font-sans mt-1.5 font-bold flex items-center gap-1">
+    ✓ Address verified for UK delivery
+  </span>
+)}
+</div>   {/* closes md:col-span-2 */}
+
+</div>   {/* closes the grid started on line 1421 */}
+
+{/* Delivery Speed Selector Tiers */}
+<div className="space-y-2.5 pt-2">
                     <span className="block text-[9px] font-mono text-slate-400 uppercase tracking-widest font-bold">Shipping Method</span>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
                       {[
@@ -1553,11 +1611,11 @@ export default function App() {
                     <div className="space-y-1">
                       <h5 className="font-extrabold text-slate-900 text-sm">Cash on Delivery (COD)</h5>
                       <p className="text-xs text-slate-600 leading-relaxed max-w-[340px] mx-auto font-medium">
-                        Pay in cash when your order is delivered anywhere in Pakistan.
+                        Pay in cash when your order is delivered anywhere in UK.
                       </p>
                     </div>
                     <span className="inline-flex bg-emerald-100 text-emerald-800 font-mono text-[9px] font-bold px-3 py-1 rounded border border-emerald-200 uppercase tracking-wide">
-                      COD Supported across Pakistan
+                      COD Supported across UK
                     </span>
                   </div>
 

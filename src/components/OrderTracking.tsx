@@ -45,14 +45,14 @@ export default function OrderTracking({ onBackToShop, activeOrder }: OrderTracki
     trackingNumber: 'TR_DHL_982405812',
     estimatedDelivery: 'July 20 - July 22',
     shippingAddress: {
-      fullName: 'Aria Malik',
-      street: 'House 45-B, Sector Z, Street 12, DHA Phase 3',
-      city: 'Lahore',
-      state: 'Punjab',
-      zipCode: '54000',
-      country: 'Pakistan',
-      phone: '+92 333 4567890'
-    },
+  fullName: 'Emily Johnson',
+  street: '221 Baker Street',
+  city: 'London',
+  state: 'Greater London',
+  zipCode: 'NW1 6XE',
+  country: 'United Kingdom',
+  phone: '+44 7700 900123'
+},
     paymentMethod: 'Visa ending in 4242',
     date: '2026-07-15',
     events: [

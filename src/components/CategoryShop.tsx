@@ -140,7 +140,13 @@ export default function CategoryShop({
   ];
   
   // Available Brands in catalog
-  const brands = Array.from(new Set(productsList.map(p => p.brand)));
+  const brands = Array.from(
+  new Set(
+    productsList
+      .map(p => p.brand)
+      .filter(Boolean)
+  )
+);
 
   // Available unique colors & sizes gathered from catalog for high fidelity
   const uniqueColors = ['All', ...Array.from(new Set(productsList.flatMap(p => p.colors || [])))].slice(0, 8);
@@ -148,10 +154,10 @@ export default function CategoryShop({
 
   // Price range options
   const priceRangeOptions = [
-    { label: 'Under Rs. 5,000', val: 'under_5000' },
-    { label: 'Rs. 5,000 to Rs. 20,000', val: '5000_20000' },
-    { label: 'Over Rs. 20,000', val: 'over_20000' }
-  ];
+  { label: "Under £50", value: "0-50" },
+  { label: "£50 - £150", value: "50-150" },
+  { label: "Over £150", value: "150+" },
+];
 
   // Filtering calculation logic
   const filteredProducts = productsList.filter((p) => {

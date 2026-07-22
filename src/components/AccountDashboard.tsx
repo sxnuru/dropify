@@ -24,7 +24,7 @@ const activeOrderObj: Order = {
       selectedSize: 'One Size'
     }
   ],
-  subtotal: 340,
+  subtotal: 340,   // £340
   discount: 0,
   tax: 0,
   shipping: 0,
@@ -33,14 +33,15 @@ const activeOrderObj: Order = {
   trackingNumber: 'TR_DHL_774912026',
   estimatedDelivery: 'July 18 - July 19',
   shippingAddress: {
-    fullName: 'Aria Malik',
-    street: 'House 45-B, Sector Z, Street 12, DHA Phase 3',
-    city: 'Lahore',
-    state: 'Punjab',
-    zipCode: '54000',
-    country: 'Pakistan',
-    phone: '+92 333 4567890'
-  },
+  fullName: 'Emily Johnson',
+  street: '221 Baker Street',
+  city: 'London',
+  state: 'Greater London',
+  zipCode: 'NW1 6XE',
+  country: 'United Kingdom',
+  phone: '+44 7700 900123'
+},
+
   paymentMethod: 'Cash on Delivery (COD)',
   date: '2026-07-17',
   events: [
@@ -71,14 +72,15 @@ const deliveredOrderObj: Order = {
   trackingNumber: 'TR_DHL_429182026',
   estimatedDelivery: 'July 15, 2026',
   shippingAddress: {
-    fullName: 'Aria Malik',
-    street: 'House 45-B, Sector Z, Street 12, DHA Phase 3',
-    city: 'Lahore',
-    state: 'Punjab',
-    zipCode: '54000',
-    country: 'Pakistan',
-    phone: '+92 333 4567890'
-  },
+  fullName: 'Emily Johnson',
+  street: '221 Baker Street',
+  city: 'London',
+  state: 'Greater London',
+  zipCode: 'NW1 6XE',
+  country: 'United Kingdom',
+  phone: '+44 7700 900123'
+},
+
   paymentMethod: 'Cash on Delivery (COD)',
   date: '2026-07-15',
   events: [
@@ -120,14 +122,14 @@ export default function AccountDashboard({
   onMoveWishToCart = () => {},
   onNavigateToProduct = () => {},
   onLogout = () => {},
-  currentUser = {
-    fullName: 'Aria Malik',
-    email: 'aria.malik@vanguard.co',
-    phone: '+92 333 4567890',
-    status: 'Platinum Tier',
-    memberSince: 'January 2026',
-    loyaltyPoints: 1250
-  },
+currentUser = {
+  fullName: 'Olivia Thompson',
+  email: 'olivia.thompson@example.co.uk',
+  phone: '+44 7700 900123',
+  status: 'Platinum Tier',
+  memberSince: 'January 2026',
+  loyaltyPoints: 1250,
+},
   onUpdateProfile = () => {}
 }: AccountDashboardProps) {
   const [activeSubTab, setActiveSubTab] = useState(initialSubTab);
@@ -159,17 +161,17 @@ export default function AccountDashboard({
   
   // Addresses State
   const [addresses, setAddresses] = useState<Address[]>([
-    {
-      fullName: 'Muhammad Bilal',
-      street: 'House 45-B, Sector Z, Street 12',
-      city: 'Lahore',
-      state: 'Punjab',
-      zipCode: '54000',
-      country: 'Pakistan',
-      phone: '+92 300 1234567',
-      isDefault: true
-    }
-  ]);
+  {
+    fullName: 'Emily Johnson',
+    street: '221 Baker Street',
+    city: 'London',
+    state: 'Greater London',
+    zipCode: 'NW1 6XE',
+    country: 'United Kingdom',
+    phone: '+44 7700 900123',
+    isDefault: true
+  }
+]);
   const [showAddressForm, setShowAddressForm] = useState(false);
   const [newFullName, setNewFullName] = useState('');
   const [newStreet, setNewStreet] = useState('');
@@ -252,15 +254,15 @@ export default function AccountDashboard({
   const handleAddAddress = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newFullName || !newStreet || !newCity) return;
-    const newAddr: Address = {
-      fullName: newFullName,
-      street: newStreet,
-      city: newCity,
-      state: newState || "Punjab",
-      zipCode: newZipCode || "54000",
-      country: 'Pakistan',
-      phone: newPhone || "+92 300 1234567"
-    };
+   const newAddr: Address = {
+  fullName: newFullName,
+  street: newStreet,
+  city: newCity,
+  state: newState || "",
+  zipCode: newZipCode || "",
+  country: "United Kingdom",
+  phone: newPhone || ""
+};
     setAddresses([...addresses, newAddr]);
     setShowAddressForm(false);
     setIsAddrValidated(false);
@@ -797,7 +799,7 @@ export default function AccountDashboard({
                   </div>
                   <div>
                     <label className="block text-[9px] font-mono text-slate-400 uppercase mb-1.5 font-bold">Phone Number</label>
-                    <input type="text" required value={newPhone} onChange={(e) => setNewPhone(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-slate-200" placeholder="+92 300 1234567" />
+                    <input type="text" required value={newPhone} onChange={(e) => setNewPhone(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-slate-200" placeholder="+44 7700 900123" />
                   </div>
                   <div className="md:col-span-2">
                     <label className="block text-[9px] font-mono text-slate-400 uppercase mb-1.5 font-bold">Street Address</label>
@@ -823,7 +825,9 @@ export default function AccountDashboard({
                     <input type="text" required value={newCity} onChange={(e) => setNewCity(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-slate-200" placeholder="Lahore" />
                   </div>
                   <div>
-                    <label className="block text-[9px] font-mono text-slate-400 uppercase mb-1.5 font-bold">Province & Zip Code</label>
+                   <label className="block text-[9px] font-mono text-slate-400 uppercase mb-1 font-bold">
+  County
+</label>
                     <div className="flex gap-2">
                       <input type="text" placeholder="Punjab" value={newState} onChange={(e) => setNewState(e.target.value)} className="w-24 px-2 py-2.5 rounded-xl border border-slate-200 text-center" />
                       <input type="text" placeholder="54000" value={newZipCode} onChange={(e) => setNewZipCode(e.target.value)} className="flex-1 px-3 py-2.5 rounded-xl border border-slate-200" />
@@ -910,7 +914,7 @@ export default function AccountDashboard({
               <div className="space-y-4 text-left">
                 <div className="space-y-1">
                   <span className="font-bold text-slate-900 block">How does Cash on Delivery (COD) work?</span>
-                  <p className="text-slate-500 leading-relaxed">We support Cash on Delivery all across Pakistan. You only pay our courier representative in cash when your ordered package is physically delivered to your saved address.</p>
+                  <p className="text-slate-500 leading-relaxed">We support Cash on Delivery all across United Kingdom. You only pay our courier representative in cash when your ordered package is physically delivered to your saved address.</p>
                 </div>
                 <div className="space-y-1 border-t border-slate-100/50 pt-3">
                   <span className="font-bold text-slate-900 block">What are the delivery times and charges?</span>

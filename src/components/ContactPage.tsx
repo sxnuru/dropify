@@ -164,14 +164,14 @@ export default function ContactPage({ onBackToHome }: ContactPageProps) {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-[9px] font-mono text-slate-400 uppercase tracking-wider mb-1 font-bold">Your Full Name</label>
-                <input 
-                  type="text" 
-                  required 
-                  placeholder="Aria Malik"
-                  value={name} 
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-blue-500 bg-slate-50"
-                />
+              <input 
+  type="text" 
+  required 
+  placeholder="Enter your full name"
+  value={name} 
+  onChange={(e) => setName(e.target.value)}
+  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-blue-500 bg-slate-50"
+/>
               </div>
               <div>
                 <label className="block text-[9px] font-mono text-slate-400 uppercase tracking-wider mb-1 font-bold">Your Email Address</label>

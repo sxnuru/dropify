@@ -711,7 +711,7 @@ export default function HomePage({
               {
                 icon: <Truck className="w-6 h-6 text-blue-600" />,
                 title: "Fast Nationwide Delivery",
-                desc: "Express shipping directly to your doorstep in Pakistan with real-time transit tracking and zero delay."
+                desc: "Express shipping directly to your doorstep in United Kingdom with real-time transit tracking and zero delay."
               },
               {
                 icon: <Lock className="w-6 h-6 text-blue-600" />,
