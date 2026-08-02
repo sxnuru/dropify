@@ -3,540 +3,653 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
-import { Product } from '../types';
-import { PRODUCTS, SELLER_ANALYTICS } from '../data';
+import React, { useState, useMemo } from 'react';
+import { Product, Order } from '../types';
 import { formatPrice } from '../utils/currency';
 import { 
-  TrendingUp, BarChart4, PlusCircle, Package, Award, 
-  Trash2, ShieldAlert, Edit, Check, Settings, PieChart
+  PlusCircle, Package, Trash2, ShieldAlert, Edit, Check, Settings, 
+  Search, SlidersHorizontal, X, CheckCircle, Info, ChevronRight, HelpCircle
 } from 'lucide-react';
 
 interface SellerDashboardProps {
   onAddProduct: (p: Product) => void;
+  onEditProduct: (p: Product) => void;
   onDeleteProduct: (id: string) => void;
   productsList: Product[];
+  onBackToHome?: () => void;
+  ordersList?: Order[];
 }
 
-export default function SellerDashboard({ onAddProduct, onDeleteProduct, productsList }: SellerDashboardProps) {
-  const [activeTab, setActiveTab] = useState<'analytics' | 'upload' | 'inventory'>('analytics');
+export default function SellerDashboard({ 
+  onAddProduct, onEditProduct, onDeleteProduct, productsList, onBackToHome = () => {} 
+}: SellerDashboardProps) {
   
-  // Listing Form State
-  const [name, setName] = useState('');
-  const [price, setPrice] = useState('');
-  const [category, setCategory] = useState('Fashion');
-  const [subcategory, setSubcategory] = useState("Men's Clothing");
-  const [stock, setStock] = useState('10');
-  const [brand, setBrand] = useState('');
-  const [description, setDescription] = useState('');
-  const [specs, setSpecs] = useState('Material: 100% Organic Cotton\nWeight: 240gsm');
-  const [story, setStory] = useState('');
-  const [uploadSuccess, setUploadSuccess] = useState(false);
+  const [activeTab, setActiveTab] = useState<'inventory' | 'settings'>('inventory');
+  
+  // Store Settings (with LocalStorage persistence)
+  const [storeName, setStoreName] = useState(() => localStorage.getItem('ds_store_name') || 'DreamShelf Premium Curation');
+  const [storeDesc, setStoreDesc] = useState(() => localStorage.getItem('ds_store_desc') || 'Curating the finest boutique products, tech, and spatial accessories.');
+  const [codEnabled, setCodEnabled] = useState(() => localStorage.getItem('ds_cod_enabled') !== 'false');
+  const [standardShipping, setStandardShipping] = useState(() => localStorage.getItem('ds_std_shipping') || '4.99');
+  const [expressShipping, setExpressShipping] = useState(() => localStorage.getItem('ds_exp_shipping') || '9.99');
+  const [supportEmail, setSupportEmail] = useState(() => localStorage.getItem('ds_support_email') || 'curator@dreamshelf.co.uk');
+  const [supportPhone, setSupportPhone] = useState(() => localStorage.getItem('ds_support_phone') || '+44 20 7946 0958');
+  const [storeTheme, setStoreTheme] = useState(() => localStorage.getItem('ds_theme') || 'light');
+  
+  const [settingsSuccess, setSettingsSuccess] = useState(false);
 
-  // Promotion Builder state
-  const [promoCode, setPromoCode] = useState('');
-  const [promoType, setPromoType] = useState('percentage');
-  const [promoValue, setPromoValue] = useState('');
-  const [promoSuccess, setPromoSuccess] = useState(false);
+  // Search & Filter state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('All');
+  const [stockFilter, setStockFilter] = useState('All');
 
-  const handleUpload = (e: React.FormEvent) => {
+  // Modal / Drawer state for Add/Edit
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+
+  // Add / Edit Form parameters
+  const [formName, setFormName] = useState('');
+  const [formPrice, setFormPrice] = useState('');
+  const [formBrand, setFormBrand] = useState('');
+  const [formCategory, setFormCategory] = useState('Fashion');
+  const [formSubcategory, setFormSubcategory] = useState('Accessories');
+  const [formStock, setFormStock] = useState('10');
+  const [formDescription, setFormDescription] = useState('');
+  const [formImage, setFormImage] = useState('');
+
+  // Handle store settings configuration submit
+  const handleSaveSettings = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !price || !brand) return;
-
-    const parsedSpecs: Record<string, string> = {};
-    specs.split('\n').forEach((line) => {
-      const [k, v] = line.split(':');
-      if (k && v) parsedSpecs[k.trim()] = v.trim();
-    });
-
-    const newProd: Product = {
-      id: `ds-${Date.now()}`,
-      name,
-      price: Number(price),
-      description,
-      brand,
-      category,
-      subcategory,
-      stock: Number(stock),
-      images: ['https://images.unsplash.com/photo-1523381210434-271e8be1f52b?auto=format&fit=crop&q=80&w=1000'],
-      rating: 5.0,
-      reviewCount: 0,
-      colors: ['Midnight Black', 'Alabaster'],
-      sizes: ['S', 'M', 'L'],
-      productStory: story || 'An artisan curated addition to the DreamShelf platform.',
-      specs: parsedSpecs,
-      reviews: []
-    };
-
-    onAddProduct(newProd);
-    setUploadSuccess(true);
+    localStorage.setItem('ds_store_name', storeName);
+    localStorage.setItem('ds_store_desc', storeDesc);
+    localStorage.setItem('ds_cod_enabled', String(codEnabled));
+    localStorage.setItem('ds_std_shipping', standardShipping);
+    localStorage.setItem('ds_exp_shipping', expressShipping);
+    localStorage.setItem('ds_support_email', supportEmail);
+    localStorage.setItem('ds_support_phone', supportPhone);
+    localStorage.setItem('ds_theme', storeTheme);
     
-    // Clear form
-    setName('');
-    setPrice('');
-    setBrand('');
-    setDescription('');
-    setStory('');
-
-    setTimeout(() => setUploadSuccess(false), 4000);
+    setSettingsSuccess(true);
+    setTimeout(() => setSettingsSuccess(false), 3000);
   };
 
-  const handlePromoCreate = (e: React.FormEvent) => {
+  // Open form modal for new product addition
+  const handleOpenAddForm = () => {
+    setEditingProduct(null);
+    setFormName('');
+    setFormPrice('');
+    setFormBrand('');
+    setFormCategory('Fashion');
+    setFormSubcategory('Accessories');
+    setFormStock('10');
+    setFormDescription('');
+    setFormImage('');
+    setIsFormOpen(true);
+  };
+
+  // Open form modal for editing an existing product
+  const handleOpenEditForm = (p: Product) => {
+    setEditingProduct(p);
+    setFormName(p.name);
+    setFormPrice(String(p.price));
+    setFormBrand(p.brand);
+    setFormCategory(p.category);
+    setFormSubcategory(p.subcategory);
+    setFormStock(String(p.stock));
+    setFormDescription(p.description);
+    setFormImage(p.images[0] || '');
+    setIsFormOpen(true);
+  };
+
+  // Handle form upload / edit submit
+  const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!promoCode || !promoValue) return;
-    setPromoSuccess(true);
-    setTimeout(() => {
-      setPromoSuccess(false);
-      setPromoCode('');
-      setPromoValue('');
-    }, 4000);
+
+    const priceNum = parseFloat(formPrice) || 0;
+    const stockNum = parseInt(formStock, 10) || 0;
+    const imageLink = formImage.trim() || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&q=80&w=600';
+
+    if (editingProduct) {
+      // Edit mode
+      const updated: Product = {
+        ...editingProduct,
+        name: formName,
+        price: priceNum,
+        brand: formBrand,
+        category: formCategory,
+        subcategory: formSubcategory,
+        stock: stockNum,
+        description: formDescription,
+        images: [imageLink, ...editingProduct.images.slice(1)]
+      };
+      onEditProduct(updated);
+    } else {
+      // Add mode
+      // Generate secure unique SKU ID
+      const nextIdNum = productsList.length + 1;
+      const generatedId = `DS${String(nextIdNum).padStart(6, '0')}`;
+
+      const added: Product = {
+        id: generatedId,
+        name: formName,
+        price: priceNum,
+        brand: formBrand,
+        category: formCategory,
+        subcategory: formSubcategory,
+        stock: stockNum,
+        description: formDescription,
+        images: [imageLink],
+        rating: 5.0,
+        reviewCount: 0,
+        specs: { "Origin": "UK Milled", "Quality": "Premium certified" },
+        colors: ["Default"],
+        sizes: ["One Size"],
+        reviews: [],
+        tags: [formCategory.toLowerCase(), formSubcategory.toLowerCase()]
+      };
+      onAddProduct(added);
+    }
+
+    setIsFormOpen(false);
   };
+
+  // Filter products list based on Search & Select inputs
+  const filteredProducts = useMemo(() => {
+    return productsList.filter((p) => {
+      const matchesSearch = 
+        p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+        p.brand.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        p.id.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      const matchesCategory = 
+        categoryFilter === 'All' || 
+        p.category.toLowerCase() === categoryFilter.toLowerCase();
+      
+      let matchesStock = true;
+      if (stockFilter === 'Low Stock') {
+        matchesStock = p.stock > 0 && p.stock < 6;
+      } else if (stockFilter === 'Out of Stock') {
+        matchesStock = p.stock === 0;
+      }
+
+      return matchesSearch && matchesCategory && matchesStock;
+    });
+  }, [productsList, searchQuery, categoryFilter, stockFilter]);
+
+  // Unique category tags from catalog
+  const availableCategories = ['Fashion', 'Toys & Games', 'Sports & Outdoors', 'Health & Personal Care', 'Home & Garden', 'Electronics', 'Food & Grocery', 'Other'];
 
   return (
-    <div id="seller-hub-root" className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+    <div id="merchant-dashboard-root" className="space-y-6 font-sans">
       
-      {/* Seller Header */}
-      <div className="bg-slate-900 text-white p-8 md:p-10 relative overflow-hidden border-b border-slate-800">
-        <div className="absolute top-0 right-0 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl" />
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div>
-            <div className="inline-flex items-center gap-1.5 bg-blue-500/20 border border-blue-500/30 px-3 py-1 rounded-full text-xs font-mono text-blue-400 uppercase tracking-wider mb-3">
-              <Award className="w-3.5 h-3.5" /> Merchant Portal
+      {/* 1. SECURED SYSTEM BRAND HEADER */}
+      <div className="bg-slate-900 text-white p-8 md:p-10 rounded-[32px] relative overflow-hidden border border-slate-800 text-left">
+        <div className="absolute top-0 right-0 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="relative z-10 flex flex-col md:flex-row md:justify-between md:items-center gap-6">
+          <div className="space-y-2">
+            <div className="inline-flex items-center gap-1.5 bg-blue-500/20 border border-blue-500/30 px-3 py-1 rounded-full text-[9px] font-mono text-blue-400 uppercase tracking-widest font-bold">
+              <Settings className="w-3 h-3 animate-spin-slow" /> Store Management
             </div>
-            <h1 className="font-sans text-2xl md:text-4xl font-bold tracking-tight mb-1">
-              Store Dashboard
-            </h1>
-            <p className="text-slate-400 text-xs md:text-sm font-sans max-w-lg">
-              Manage product listings, review store traffic charts, run custom brand promotions, and monitor live inventory counts.
-            </p>
+            <h1 className="text-3xl font-black tracking-tight">{storeName}</h1>
+            <p className="text-slate-400 text-xs max-w-xl font-medium leading-relaxed">{storeDesc}</p>
           </div>
-
-          <div className="flex gap-2 bg-slate-800/80 p-1 rounded-xl self-start md:self-auto border border-slate-700/40">
-            {(['analytics', 'upload', 'inventory'] as const).map((tab) => (
-              <button
-                id={`seller-tab-${tab}`}
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`px-4 py-2 rounded-lg text-xs font-sans font-semibold transition-all ${
-                  activeTab === tab
-                    ? 'bg-blue-600 text-white shadow-sm'
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                {tab === 'analytics' && 'Analytics'}
-                {tab === 'upload' && 'Add Listing'}
-                {tab === 'inventory' && 'Inventory Hub'}
-              </button>
-            ))}
+          <div className="flex gap-2.5 shrink-0">
+            <button 
+              onClick={onBackToHome}
+              className="px-4 py-2.5 bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 text-slate-200 text-xs font-bold rounded-xl transition-all cursor-pointer uppercase tracking-wider"
+            >
+              ← Exit Portal
+            </button>
           </div>
         </div>
       </div>
 
-      {/* Main Content Areas */}
-      <div className="p-6 md:p-10 bg-slate-50/50">
+      {/* 2. STATS SUMMARY BAR */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-left">
+        <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
+          <span className="font-mono text-[9px] text-slate-400 uppercase tracking-wider block font-bold">Total Products</span>
+          <span className="font-sans text-2xl font-bold text-slate-900 block mt-1">{productsList.length}</span>
+          <span className="text-slate-500 font-mono text-[10px] mt-1.5 inline-block">Items in catalog</span>
+        </div>
+        <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
+          <span className="font-mono text-[9px] text-slate-400 uppercase tracking-wider block font-bold">Critical Low Stocks</span>
+          <span className={`font-sans text-2xl font-bold block mt-1 ${productsList.filter(p => p.stock > 0 && p.stock < 6).length > 0 ? 'text-amber-600' : 'text-slate-900'}`}>
+            {productsList.filter(p => p.stock > 0 && p.stock < 6).length}
+          </span>
+          <span className="text-slate-500 font-mono text-[10px] mt-1.5 inline-block">1 to 5 units remaining</span>
+        </div>
+        <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
+          <span className="font-mono text-[9px] text-slate-400 uppercase tracking-wider block font-bold">Out of Stock Items</span>
+          <span className={`font-sans text-2xl font-bold block mt-1 ${productsList.filter(p => p.stock === 0).length > 0 ? 'text-red-600 animate-pulse' : 'text-slate-900'}`}>
+            {productsList.filter(p => p.stock === 0).length}
+          </span>
+          <span className="text-slate-500 font-mono text-[10px] mt-1.5 inline-block">Zero units available</span>
+        </div>
+        <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
+          <span className="font-mono text-[9px] text-slate-400 uppercase tracking-wider block font-bold">Configuration Fee</span>
+          <span className="font-sans text-2xl font-bold text-slate-900 block mt-1">£{standardShipping}</span>
+          <span className="text-slate-500 font-mono text-[10px] mt-1.5 inline-block">Standard Delivery cost</span>
+        </div>
+      </div>
+
+      {/* 3. TABS SELECTOR */}
+      <div className="flex border-b border-slate-200 gap-6 text-sm font-sans">
+        <button
+          onClick={() => setActiveTab('inventory')}
+          className={`pb-3 font-bold transition-all relative cursor-pointer ${
+            activeTab === 'inventory' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-500 hover:text-slate-900'
+          }`}
+        >
+          <span className="flex items-center gap-1.5">
+            <Package className="w-4 h-4" /> Products Directory
+          </span>
+        </button>
+        <button
+          onClick={() => setActiveTab('settings')}
+          className={`pb-3 font-bold transition-all relative cursor-pointer ${
+            activeTab === 'settings' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-500 hover:text-slate-900'
+          }`}
+        >
+          <span className="flex items-center gap-1.5">
+            <Settings className="w-4 h-4" /> Hub Settings
+          </span>
+        </button>
+      </div>
+
+      {/* 4. MAIN WORKSPACE SEGMENTS */}
+      <div className="bg-slate-50/50 rounded-3xl p-6 md:p-8 border border-slate-100">
         
-        {/* TAB 1: ANALYTICS & CHARTS */}
-        {activeTab === 'analytics' && (
-          <div className="space-y-8 animate-fadeIn">
-            
-            {/* Quick Metrics Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
-                <span className="font-mono text-[10px] text-slate-400 uppercase tracking-wider block font-bold">Total Store Views</span>
-                <span className="font-sans text-2xl font-bold text-slate-900 block mt-1">98,450</span>
-                <span className="text-blue-600 font-mono text-[10px] font-bold mt-2 inline-block">↑ 14.2% this week</span>
-              </div>
-              <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
-                <span className="font-mono text-[10px] text-slate-400 uppercase tracking-wider block font-bold">Conversion Rate</span>
-                <span className="font-sans text-2xl font-bold text-slate-900 block mt-1">{SELLER_ANALYTICS.viewsStats.conversionRate}</span>
-                <span className="text-blue-600 font-mono text-[10px] font-bold mt-2 inline-block">↑ 0.8% overall average</span>
-              </div>
-              <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
-                <span className="font-mono text-[10px] text-slate-400 uppercase tracking-wider block font-bold">Active Listings</span>
-                <span className="font-sans text-2xl font-bold text-slate-900 block mt-1">{productsList.length}</span>
-                <span className="text-slate-500 font-mono text-[10px] mt-2 inline-block">Synchronized with live feed</span>
-              </div>
-              <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm flex items-start justify-between">
-                <div>
-                  <span className="font-mono text-[10px] text-slate-400 uppercase tracking-wider block font-bold">Critical Stocks</span>
-                  <span className="font-sans text-2xl font-bold text-red-600 block mt-1">
-                    {productsList.filter(p => p.stock < 6).length}
-                  </span>
-                  <span className="text-slate-500 font-mono text-[10px] mt-2 inline-block">Items below 6 units</span>
-                </div>
-                <span className="bg-red-50 p-2 rounded-xl text-red-600"><ShieldAlert className="w-5 h-5" /></span>
-              </div>
-            </div>
-
-            {/* Custom Visual Data Charts */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              
-              {/* Chart A: Monthly Revenue (Dynamic SVG) */}
-              <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm lg:col-span-2 space-y-4">
-                <div className="flex justify-between items-center border-b border-slate-50 pb-4">
-                  <h3 className="font-sans font-bold text-slate-800 text-sm flex items-center gap-2">
-                    <TrendingUp className="w-4 h-4 text-blue-600" /> Monthly Revenue Volume (GBP)
-                  </h3>
-                  <span className="text-[10px] font-mono text-slate-400 uppercase">Interactive Chart</span>
-                </div>
-
-                {/* SVG Bar Chart */}
-                <div className="relative pt-4">
-                  <svg className="w-full h-64" viewBox="0 0 600 240">
-                    {/* Grid lines */}
-                    <line x1="40" y1="20" x2="580" y2="20" stroke="#F1F5F9" strokeWidth="1" strokeDasharray="4" />
-                    <line x1="40" y1="80" x2="580" y2="80" stroke="#F1F5F9" strokeWidth="1" strokeDasharray="4" />
-                    <line x1="40" y1="140" x2="580" y2="140" stroke="#F1F5F9" strokeWidth="1" strokeDasharray="4" />
-                    <line x1="40" y1="200" x2="580" y2="200" stroke="#E2E8F0" strokeWidth="1" />
-
-                    {/* Chart Bars */}
-                    {SELLER_ANALYTICS.monthlyRevenue.map((d, index) => {
-                      const barWidth = 40;
-                      const gap = 50;
-                      const startX = 60 + index * (barWidth + gap);
-                      const maxVal = 45000;
-                      // Height Calculations
-                      const totalH = (d.sales / maxVal) * 160;
-                      const organicH = (d.organic / maxVal) * 160;
-                      const adH = totalH - organicH;
-
-                      return (
-                        <g key={index} className="group cursor-pointer">
-                          {/* Hover background tooltip card */}
-                          <rect 
-                            x={startX - 10} y="10" width={barWidth + 20} height="190" 
-                            fill="transparent" 
-                            className="hover:fill-slate-50/50 transition-colors"
-                          />
-                          {/* Organic Sales Segment (Blue-600) */}
-                          <rect 
-                            x={startX} y={200 - organicH} width={barWidth} height={organicH} 
-                            fill="#2563eb" rx="4"
-                          />
-                          {/* Ad Sales Segment (Blue-400) */}
-                          <rect 
-                            x={startX} y={200 - totalH} width={barWidth} height={adH} 
-                            fill="#60a5fa" rx="4"
-                          />
-
-                          {/* Data label */}
-                          <text x={startX + barWidth/2} y="220" textAnchor="middle" className="font-mono text-[10px] fill-slate-400">{d.month}</text>
-                          
-                          {/* Value pop-up (Visible on hover in styling) */}
-                          <text x={startX + barWidth/2} y={185 - totalH} textAnchor="middle" className="font-mono text-[9px] fill-slate-800 font-bold opacity-0 group-hover:opacity-100 transition-opacity bg-white">
-                            £{(d.sales / 1000).toFixed(0)}k
-                          </text>
-                        </g>
-                      );
-                    })}
-                  </svg>
-                  
-                  {/* Legend */}
-                  <div className="flex gap-4 justify-center pt-2 font-mono text-[10px]">
-                    <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 bg-blue-700 rounded" /> Organic Discovery</span>
-                    <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 bg-blue-400 rounded" /> Advertising Referrals</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Chart B: Category Share Shares (Donut representation) */}
-              <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm space-y-4">
-                <div className="flex justify-between items-center border-b border-slate-50 pb-4">
-                  <h3 className="font-sans font-bold text-slate-800 text-sm flex items-center gap-2">
-                    <PieChart className="w-4 h-4 text-blue-600" /> Share by Category
-                  </h3>
-                  <span className="text-[10px] font-mono text-slate-400 uppercase">Live Weights</span>
-                </div>
-
-                <div className="flex flex-col items-center justify-center space-y-4 py-2">
-                  <div className="relative w-36 h-36">
-                    {/* SVG Circular Donut representation */}
-                    <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
-                      <circle cx="18" cy="18" r="15.915" fill="transparent" stroke="#F1F5F9" strokeWidth="3" />
-                      
-                      {/* Fashion Segment 38% */}
-                      <circle cx="18" cy="18" r="15.915" fill="transparent" stroke="#1e3a8a" strokeWidth="3.2" strokeDasharray="38 62" strokeDashoffset="0" />
-                      {/* Home Living Segment 22% */}
-                      <circle cx="18" cy="18" r="15.915" fill="transparent" stroke="#2563eb" strokeWidth="3.2" strokeDasharray="22 78" strokeDashoffset="-38" />
-                      {/* Electronics Segment 20% */}
-                      <circle cx="18" cy="18" r="15.915" fill="transparent" stroke="#3b82f6" strokeWidth="3.2" strokeDasharray="20 80" strokeDashoffset="-60" />
-                      {/* Gym Gear 12% */}
-                      <circle cx="18" cy="18" r="15.915" fill="transparent" stroke="#60a5fa" strokeWidth="3.2" strokeDasharray="12 88" strokeDashoffset="-80" />
-                      {/* Collectibles 8% */}
-                      <circle cx="18" cy="18" r="15.915" fill="transparent" stroke="#0F172A" strokeWidth="3.2" strokeDasharray="8 92" strokeDashoffset="-92" />
-                    </svg>
-                    <div className="absolute inset-0 flex flex-col justify-center items-center">
-                      <span className="font-sans text-xs text-slate-400 uppercase font-bold tracking-wider text-[8px]">TOTAL SALE</span>
-                      <span className="font-sans text-lg font-extrabold text-slate-900">£149k</span>
-                    </div>
-                  </div>
-
-                  {/* List of segment descriptions */}
-                  <div className="w-full space-y-1.5 font-sans text-xs">
-                    {SELLER_ANALYTICS.categoryShare.map((c, idx) => (
-                      <div id={`category-share-${idx}`} key={idx} className="flex justify-between items-center text-[11px]">
-                        <span className="flex items-center gap-1.5 text-slate-500">
-                          <span 
-                            className="w-2 h-2 rounded-full" 
-                            style={{ 
-                              backgroundColor: 
-                                idx === 0 ? '#1e3a8a' : 
-                                idx === 1 ? '#2563eb' : 
-                                idx === 2 ? '#3b82f6' : 
-                                idx === 3 ? '#60a5fa' : '#0F172A' 
-                            }} 
-                          />
-                          {c.name}
-                        </span>
-                        <span className="font-mono font-bold text-slate-900">{c.percentage}%</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Brand promotions Creator */}
-            <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm space-y-6">
-              <div>
-                <h3 className="font-sans font-bold text-slate-800 text-sm">Store-wide Promotions & Brand Coupons</h3>
-                <p className="text-slate-500 text-xs mt-1 leading-relaxed">Launch targeted loyalty rewards to incentivize high-basket checkouts. Coupons sync immediately across all customer checkouts.</p>
-              </div>
-
-              <form onSubmit={handlePromoCreate} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-                <div>
-                  <label className="block text-[10px] font-mono text-slate-400 uppercase mb-1">Coupon Promo Code</label>
-                  <input 
-                    type="text" 
-                    required
-                    placeholder="e.g. FLASH30" 
-                    value={promoCode}
-                    onChange={(e) => setPromoCode(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-mono tracking-widest placeholder-slate-400 focus:outline-none focus:border-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-mono text-slate-400 uppercase mb-1">Deduction Type</label>
-                  <select 
-                    value={promoType}
-                    onChange={(e) => setPromoType(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-sans placeholder-slate-400 focus:outline-none focus:border-blue-500"
-                  >
-                    <option value="percentage">Percentage deduction (%)</option>
-                    <option value="fixed">Fixed cash voucher (£)</option>
-                    <option value="free_shipping">Free Expedited Delivery</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-[10px] font-mono text-slate-400 uppercase mb-1">Value Amount</label>
-                  <input 
-                    type="number" 
-                    required
-                    placeholder="e.g. 30" 
-                    value={promoValue}
-                    onChange={(e) => setPromoValue(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-mono placeholder-slate-400 focus:outline-none focus:border-blue-500"
-                  />
-                </div>
-                <button type="submit" className="py-2.5 bg-slate-900 text-white text-xs font-sans font-bold rounded-xl hover:bg-blue-600 transition-all">
-                  ACTIVATE PROMOTION
-                </button>
-              </form>
-
-              {promoSuccess && (
-                <div id="promo-success-alert" className="bg-blue-50 border border-blue-100 p-4 rounded-xl flex items-center gap-3 text-blue-800 text-xs">
-                  <Check className="w-5 h-5" />
-                  <div>
-                    <span className="font-bold block">Promotion Coupon Code Successfully Mounted!</span>
-                    <span className="font-mono text-[10px]">Activated code: **{promoCode.toUpperCase()}** worth **{promoType === 'percentage' ? promoValue + '%' : '£' + promoValue}**. Ready to receive traffic.</span>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* TAB 2: UPLOAD LISTING FORM */}
-        {activeTab === 'upload' && (
-          <div className="bg-white rounded-2xl border border-slate-100 p-6 md:p-8 shadow-sm max-w-3xl mx-auto animate-fadeIn">
-            <h2 className="font-sans text-xl font-bold text-slate-900 tracking-tight mb-1 flex items-center gap-2">
-              <PlusCircle className="w-5 h-5 text-blue-600" /> Create Product Listing
-            </h2>
-            <p className="text-slate-500 text-xs leading-relaxed mb-6">Describe materials, design background, specifications, and retail price fields carefully to list your product.</p>
-
-            <form onSubmit={handleUpload} className="space-y-6">
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-[10px] font-mono text-slate-400 uppercase mb-1">Product Title</label>
-                  <input 
-                    type="text" required placeholder="e.g. Unstructured Wool Parka" 
-                    value={name} onChange={(e) => setName(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-sans placeholder-slate-400 focus:outline-none focus:border-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-mono text-slate-400 uppercase mb-1">Milled Brand</label>
-                  <input 
-                    type="text" required placeholder="e.g. Atelier NORD" 
-                    value={brand} onChange={(e) => setBrand(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-sans placeholder-slate-400 focus:outline-none focus:border-blue-500"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div>
-                  <label className="block text-[10px] font-mono text-slate-400 uppercase mb-1">MSRP Price (£)</label>
-                  <input 
-                    type="number" required placeholder="e.g. 165" 
-                    value={price} onChange={(e) => setPrice(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-mono placeholder-slate-400 focus:outline-none focus:border-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-mono text-slate-400 uppercase mb-1">Category Hub</label>
-                  <select 
-                    value={category} onChange={(e) => setCategory(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-sans focus:outline-none focus:border-blue-500"
-                  >
-                    <option value="Fashion">Fashion & Wardrobe</option>
-                    <option value="Gym Wear">Athleisure & Gym</option>
-                    <option value="Electronics">Electronics & Tech</option>
-                    <option value="Home Decor">Home Living & Decor</option>
-                    <option value="Beauty">Organic Beauty & Skincare</option>
-                    <option value="Collectibles">Collectibles & Toys</option>
-                    <option value="Books">Books & Stationery</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-[10px] font-mono text-slate-400 uppercase mb-1">Subcategory</label>
-                  <input 
-                    type="text" required placeholder="e.g. Outerwear" 
-                    value={subcategory} onChange={(e) => setSubcategory(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-sans placeholder-slate-400 focus:outline-none focus:border-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-mono text-slate-400 uppercase mb-1">Initial Stock (Units)</label>
-                  <input 
-                    type="number" required placeholder="e.g. 15" 
-                    value={stock} onChange={(e) => setStock(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-mono placeholder-slate-400 focus:outline-none focus:border-blue-500"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-mono text-slate-400 uppercase mb-1">Short Description</label>
-                <textarea 
-                  required rows={3} placeholder="Provide an elegant, minimal summary of form and purpose..." 
-                  value={description} onChange={(e) => setDescription(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-sans placeholder-slate-400 focus:outline-none focus:border-blue-500 resize-none"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-[10px] font-mono text-slate-400 uppercase mb-1">Technical Specs (Key: Value - One per line)</label>
-                  <textarea 
-                    rows={4} placeholder="Material: 100% Cashmere&#10;Origin: Handcrafted in Italy" 
-                    value={specs} onChange={(e) => setSpecs(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-mono placeholder-slate-400 focus:outline-none focus:border-blue-500 resize-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-mono text-slate-400 uppercase mb-1">Product Description / Story</label>
-                  <textarea 
-                    rows={4} placeholder="Weave a story of design inspirations, atelier processes, factory sourcing..." 
-                    value={story} onChange={(e) => setStory(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-sans placeholder-slate-400 focus:outline-none focus:border-blue-500 resize-none"
-                  />
-                </div>
-              </div>
-
-              <button type="submit" className="w-full py-3 bg-slate-900 text-white font-sans text-xs font-bold rounded-xl hover:bg-blue-600 transition-all active:scale-95 shadow-md uppercase tracking-wider">
-                PUBLISH PRODUCT LISTING
-              </button>
-            </form>
-
-            {uploadSuccess && (
-              <div id="upload-success-alert" className="mt-4 bg-blue-50 border border-blue-100 p-4 rounded-xl flex items-center gap-3 text-blue-800 text-xs animate-pulse">
-                <Check className="w-5 h-5" />
-                <div>
-                  <span className="font-bold block">Product Successfully Published!</span>
-                  <span className="font-mono text-[10px]">The product has been successfully added to the DreamShelf catalog and is now live.</span>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* TAB 3: INVENTORY HUB */}
+        {/* TAB A: INVENTORY */}
         {activeTab === 'inventory' && (
-          <div className="space-y-6 animate-fadeIn">
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-              <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-55/20">
-                <div>
-                  <h3 className="font-sans font-bold text-slate-800 text-sm">Active Product Listings Catalog ({productsList.length})</h3>
-                  <p className="text-slate-400 text-[11px] font-sans">Delete, alter price fields, and inspect current store ratings.</p>
+          <div className="space-y-6 animate-fadeIn text-left">
+            
+            {/* Filtering Tools & Action Trigger */}
+            <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+              
+              {/* Left filter inputs group */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full md:w-auto flex-1 max-w-3xl">
+                
+                {/* Search query input */}
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                  <input
+                    type="text"
+                    placeholder="Search SKU, name, brand..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-blue-500"
+                  />
                 </div>
+
+                {/* Category selector */}
+                <select
+                  value={categoryFilter}
+                  onChange={(e) => setCategoryFilter(e.target.value)}
+                  className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-blue-500"
+                >
+                  <option value="All">All Categories</option>
+                  {availableCategories.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+
+                {/* Stock selector */}
+                <select
+                  value={stockFilter}
+                  onChange={(e) => setStockFilter(e.target.value)}
+                  className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-blue-500"
+                >
+                  <option value="All">All Stock Levels</option>
+                  <option value="Low Stock">Low Stock (1-5)</option>
+                  <option value="Out of Stock">Out of Stock (0)</option>
+                </select>
+
               </div>
 
+              {/* Add product listing trigger */}
+              <button
+                onClick={handleOpenAddForm}
+                className="w-full md:w-auto px-4 py-2.5 bg-slate-900 hover:bg-blue-600 text-white text-xs font-sans font-bold rounded-xl transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer uppercase tracking-wider shrink-0"
+              >
+                <PlusCircle className="w-4 h-4" /> Add Product
+              </button>
+
+            </div>
+
+            {/* Catalog Grid Table */}
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full border-collapse font-sans text-xs text-left">
                   <thead>
-                    <tr className="bg-slate-50 border-b border-slate-100 text-slate-400 font-mono text-[9px] uppercase tracking-wider">
-                      <th className="p-4">SKU / ID</th>
-                      <th className="p-4">Item details</th>
+                    <tr className="bg-slate-50 border-b border-slate-100 text-slate-400 font-mono text-[9px] uppercase tracking-wider select-none">
+                      <th className="p-4">SKU Code</th>
+                      <th className="p-4">Item Details</th>
                       <th className="p-4">Category</th>
                       <th className="p-4">Brand</th>
-                      <th className="p-4">Retail Price</th>
-                      <th className="p-4">Stock level</th>
-                      <th className="p-4 text-right">Actions</th>
+                      <th className="p-4">MSRP Price</th>
+                      <th className="p-4">Units Available</th>
+                      <th className="p-4 text-right">Directory Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-slate-700">
-                    {productsList.map((p, idx) => (
-                      <tr id={`inventory-row-${p.id}`} key={idx} className="hover:bg-slate-50/50 transition-colors">
-                        <td className="p-4 font-mono text-[10px] font-semibold text-slate-500">{p.id}</td>
-                        <td className="p-4">
-                          <div className="flex items-center gap-3">
-                            <img src={p.images[0]} alt="" className="w-9 h-9 object-cover rounded-lg border border-slate-100" />
-                            <div>
-                              <span className="font-bold block text-slate-900">{p.name}</span>
-                              <span className="text-[10px] text-slate-400 font-mono">{p.reviewCount} customer reviews • ★ {p.rating}</span>
+                    {filteredProducts.length > 0 ? (
+                      filteredProducts.map((p, idx) => (
+                        <tr id={`inventory-row-${p.id}`} key={idx} className="hover:bg-slate-50/50 transition-colors">
+                          <td className="p-4 font-mono text-[10px] font-semibold text-slate-500 select-all">{p.id}</td>
+                          <td className="p-4">
+                            <div className="flex items-center gap-3">
+                              <img src={p.images[0] || "https://placehold.co/100"} alt="" className="w-9 h-9 object-cover rounded-lg border border-slate-100" />
+                              <div>
+                                <span className="font-bold block text-slate-950">{p.name}</span>
+                                <span className="text-[10px] text-slate-400 font-mono">★ {p.rating} ({p.reviewCount} customer reviews)</span>
+                              </div>
                             </div>
-                          </div>
-                        </td>
-                        <td className="p-4 text-slate-500 font-mono text-[10px]">{p.category}</td>
-                        <td className="p-4 text-slate-500">{p.brand}</td>
-                        <td className="p-4 font-mono text-blue-800 font-bold">{formatPrice(p.price)}</td>
-                        <td className="p-4">
-                          <div className="flex items-center gap-2">
-                            <span className={`w-2 h-2 rounded-full ${p.stock < 6 ? 'bg-red-500 animate-ping' : 'bg-blue-500'}`} />
-                            <span className="font-mono text-[11px] font-semibold">{p.stock} units left</span>
-                          </div>
-                        </td>
-                        <td className="p-4 text-right">
-                          <button 
-                            id={`delete-btn-${p.id}`}
-                            onClick={() => onDeleteProduct(p.id)}
-                            className="p-2 text-slate-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-all"
-                            title="Remove listing from directory"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          </td>
+                          <td className="p-4 text-slate-500 font-mono text-[10px]">{p.category}</td>
+                          <td className="p-4 text-slate-500 font-semibold">{p.brand}</td>
+                          <td className="p-4 font-mono text-blue-800 font-bold">{formatPrice(p.price)}</td>
+                          <td className="p-4">
+                            <div className="flex items-center gap-2">
+                              <span className={`w-2 h-2 rounded-full ${
+                                p.stock === 0 ? 'bg-red-500 animate-pulse' : 
+                                p.stock < 6 ? 'bg-amber-500 animate-ping' : 'bg-emerald-500'
+                              }`} />
+                              <span className="font-mono text-[10px] font-semibold">
+                                {p.stock === 0 ? 'Out of Stock' : `${p.stock} units`}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="p-4 text-right">
+                            <div className="flex justify-end gap-1.5">
+                              <button 
+                                onClick={() => handleOpenEditForm(p)}
+                                className="p-2 text-slate-400 hover:text-blue-600 rounded-lg hover:bg-slate-50 transition-all cursor-pointer"
+                                name="Edit product details"
+                              >
+                                <Edit className="w-3.5 h-3.5" />
+                              </button>
+                              <button 
+                                onClick={() => onDeleteProduct(p.id)}
+                                className="p-2 text-slate-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-all cursor-pointer"
+                                name="Remove item listing"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={7} className="p-12 text-center text-slate-400 font-sans">
+                          <Info className="w-8 h-8 text-slate-350 mx-auto mb-2 opacity-50" />
+                          <span>No products match the search query or filter parameters.</span>
                         </td>
                       </tr>
-                    ))}
+                    )}
                   </tbody>
                 </table>
               </div>
             </div>
           </div>
         )}
+
+        {/* TAB B: SETTINGS */}
+        {activeTab === 'settings' && (
+          <div className="animate-fadeIn text-left max-w-4xl mx-auto">
+            <div className="bg-white rounded-2xl border border-slate-100 p-6 md:p-8 shadow-sm">
+              <div className="border-b border-slate-100 pb-4 mb-6">
+                <h3 className="font-sans font-bold text-slate-900 text-base">Store Settings Configuration</h3>
+                <p className="text-slate-400 text-xs mt-0.5 font-sans">Modify storefront tags, shipping rate values, and supported parameters.</p>
+              </div>
+
+              <form onSubmit={handleSaveSettings} className="space-y-6">
+                
+                {/* 2-column configuration grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  
+                  {/* Left Column: Details */}
+                  <div className="space-y-4">
+                    <span className="block text-[9px] font-mono text-slate-400 uppercase tracking-widest font-bold border-b border-slate-50 pb-1">Store details</span>
+                    
+                    <div className="space-y-1">
+                      <label className="block text-[10px] font-mono text-slate-400 uppercase">Merchant Store Name</label>
+                      <input 
+                        type="text" required
+                        value={storeName} onChange={(e) => setStoreName(e.target.value)}
+                        className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs font-sans focus:outline-none focus:border-blue-500"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="block text-[10px] font-mono text-slate-400 uppercase">Store Tagline / Description</label>
+                      <textarea 
+                        rows={3} required
+                        value={storeDesc} onChange={(e) => setStoreDesc(e.target.value)}
+                        className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs font-sans focus:outline-none focus:border-blue-500"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="block text-[10px] font-mono text-slate-400 uppercase">Customer Support Email</label>
+                      <input 
+                        type="email" required
+                        value={supportEmail} onChange={(e) => setSupportEmail(e.target.value)}
+                        className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs font-mono focus:outline-none focus:border-blue-500"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="block text-[10px] font-mono text-slate-400 uppercase">Support Contact Number</label>
+                      <input 
+                        type="text" required
+                        value={supportPhone} onChange={(e) => setSupportPhone(e.target.value)}
+                        className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs font-mono focus:outline-none focus:border-blue-500"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Right Column: Policies & Logistics */}
+                  <div className="space-y-4">
+                    <span className="block text-[9px] font-mono text-slate-400 uppercase tracking-widest font-bold border-b border-slate-50 pb-1">Payment & Logistics</span>
+                    
+                    <div className="space-y-1">
+                      <label className="block text-[10px] font-mono text-slate-400 uppercase">Store Currency</label>
+                      <input 
+                        type="text" disabled value="GBP (£) - System Lock"
+                        className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 text-slate-400 rounded-xl text-xs font-sans cursor-not-allowed"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5 pt-1.5">
+                      <label className="block text-[10px] font-mono text-slate-400 uppercase">Cash on Delivery (COD) Support</label>
+                      <label className="flex items-center gap-2.5 cursor-pointer text-xs text-slate-700 font-bold select-none">
+                        <input 
+                          type="checkbox"
+                          checked={codEnabled} onChange={(e) => setCodEnabled(e.target.checked)}
+                          className="w-4 h-4 text-blue-600 border-slate-200 rounded focus:ring-blue-500"
+                        />
+                        <span>Enable Cash on Delivery Checkouts</span>
+                      </label>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="block text-[10px] font-mono text-slate-400 uppercase">Standard Delivery Rate (£)</label>
+                      <input 
+                        type="number" step="0.01" required
+                        value={standardShipping} onChange={(e) => setStandardShipping(e.target.value)}
+                        className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs font-mono focus:outline-none focus:border-blue-500"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="block text-[10px] font-mono text-slate-400 uppercase">Express Delivery Rate (£)</label>
+                      <input 
+                        type="number" step="0.01" required
+                        value={expressShipping} onChange={(e) => setExpressShipping(e.target.value)}
+                        className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs font-mono focus:outline-none focus:border-blue-500"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="block text-[10px] font-mono text-slate-400 uppercase">Storefront Interface Theme</label>
+                      <select 
+                        value={storeTheme} onChange={(e) => setStoreTheme(e.target.value)}
+                        className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs font-sans focus:outline-none focus:border-blue-500"
+                      >
+                        <option value="light">Classic Editorial Light (Active)</option>
+                        <option value="dark">Minimalist Studio Dark</option>
+                      </select>
+                    </div>
+                  </div>
+
+                </div>
+
+                {/* Form CTA & Alert */}
+                <div className="border-t border-slate-100 pt-5 flex flex-col sm:flex-row items-center justify-between gap-4">
+                  <button
+                    type="submit"
+                    className="w-full sm:w-auto px-6 py-3 bg-slate-950 hover:bg-blue-600 text-white text-xs font-sans font-bold rounded-xl transition-all shadow-md uppercase tracking-wider cursor-pointer"
+                  >
+                    Save Store Configuration
+                  </button>
+                  {settingsSuccess && (
+                    <span className="text-xs font-sans text-emerald-600 font-bold flex items-center gap-1">
+                      <CheckCircle className="w-4 h-4" /> Store configuration records saved successfully!
+                    </span>
+                  )}
+                </div>
+
+              </form>
+            </div>
+          </div>
+        )}
+
       </div>
+
+      {/* 5. ADD / EDIT PRODUCT MODAL DRAWER OVERLAY */}
+      {isFormOpen && (
+        <div className="fixed inset-0 z-55 overflow-y-auto font-sans flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-fadeIn">
+          <div className="absolute inset-0" onClick={() => setIsFormOpen(false)} />
+          
+          <div className="bg-white rounded-3xl border border-slate-100 shadow-2xl max-w-xl w-full p-6 md:p-8 relative z-10 space-y-5 max-h-[90vh] overflow-y-auto animate-scaleUp text-left">
+            
+            {/* Header */}
+            <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+              <div>
+                <span className="font-mono text-[9px] text-blue-600 font-bold uppercase tracking-widest block">System Registry Portal</span>
+                <h3 className="font-sans font-extrabold text-slate-900 text-lg uppercase tracking-tight">
+                  {editingProduct ? `Edit Listing SKU: ${editingProduct.id}` : "Create Product Listing"}
+                </h3>
+              </div>
+              <button 
+                onClick={() => setIsFormOpen(false)} 
+                className="p-1.5 text-slate-400 hover:text-slate-800 rounded-xl hover:bg-slate-50 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Inputs Form */}
+            <form onSubmit={handleFormSubmit} className="space-y-4">
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="block text-[10px] font-mono text-slate-400 uppercase">Product Title Name</label>
+                  <input 
+                    type="text" required placeholder="e.g. Vintage Leather Jacket"
+                    value={formName} onChange={(e) => setFormName(e.target.value)}
+                    className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs font-sans focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="block text-[10px] font-mono text-slate-400 uppercase">Milled Brand</label>
+                  <input 
+                    type="text" required placeholder="e.g. Atelier NORD"
+                    value={formBrand} onChange={(e) => setFormBrand(e.target.value)}
+                    className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs font-sans focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="space-y-1">
+                  <label className="block text-[10px] font-mono text-slate-400 uppercase">Price (£)</label>
+                  <input 
+                    type="number" required placeholder="e.g. 149"
+                    value={formPrice} onChange={(e) => setFormPrice(e.target.value)}
+                    className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs font-mono focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="block text-[10px] font-mono text-slate-400 uppercase">Category</label>
+                  <select 
+                    value={formCategory} onChange={(e) => setFormCategory(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs font-sans focus:outline-none focus:border-blue-500"
+                  >
+                    {availableCategories.map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="block text-[10px] font-mono text-slate-400 uppercase">Subcategory</label>
+                  <input 
+                    type="text" required placeholder="e.g. Apparel"
+                    value={formSubcategory} onChange={(e) => setFormSubcategory(e.target.value)}
+                    className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs font-sans focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="block text-[10px] font-mono text-slate-400 uppercase">Stock level</label>
+                  <input 
+                    type="number" required placeholder="e.g. 24"
+                    value={formStock} onChange={(e) => setFormStock(e.target.value)}
+                    className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs font-mono focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-[10px] font-mono text-slate-400 uppercase">Product Image URL</label>
+                <input 
+                  type="url" placeholder="e.g. https://images.unsplash.com/..."
+                  value={formImage} onChange={(e) => setFormImage(e.target.value)}
+                  className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs font-mono focus:outline-none focus:border-blue-500"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-[10px] font-mono text-slate-400 uppercase">Detailed Description</label>
+                <textarea 
+                  rows={3} required placeholder="Describe product details, aesthetic design backgrounds, and materials..."
+                  value={formDescription} onChange={(e) => setFormDescription(e.target.value)}
+                  className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs font-sans focus:outline-none focus:border-blue-500"
+                />
+              </div>
+
+              {/* Form CTAs */}
+              <div className="border-t border-slate-100 pt-4 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsFormOpen(false)}
+                  className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-sans font-bold rounded-xl transition-all cursor-pointer text-center uppercase tracking-wider"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-3 bg-slate-950 hover:bg-blue-600 text-white text-xs font-sans font-bold rounded-xl transition-all shadow-md cursor-pointer text-center uppercase tracking-wider"
+                >
+                  {editingProduct ? "Save Changes" : "Create Listing"}
+                </button>
+              </div>
+
+            </form>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

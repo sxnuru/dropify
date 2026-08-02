@@ -5,90 +5,13 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Address, SavedCard, Order, Product, UserProfile } from '../types';
-import { PRODUCTS } from '../data';
 import { formatPrice } from '../utils/currency';
 import OrderTracking from './OrderTracking';
+import StatusBadge from './StatusBadge';
 import { 
   User, Award, Gift, Shield, Bell, MapPin, 
   CreditCard, Copy, Check, Plus, Trash2, Tag, Eye, ShoppingBag, Lock, Smartphone, RefreshCw, ChevronRight, Star, Sparkles, Heart, HelpCircle, LogOut, Menu
 } from 'lucide-react';
-
-const activeOrderObj: Order = {
-  id: 'DS-77491-2026',
-  items: [
-    {
-      id: 'speaker-1',
-      product: PRODUCTS.find(p => p.id === 'ds-002') || PRODUCTS[1],
-      quantity: 1,
-      selectedColor: 'Matte Silver',
-      selectedSize: 'One Size'
-    }
-  ],
-  subtotal: 340,   // £340
-  discount: 0,
-  tax: 0,
-  shipping: 0,
-  total: 340,
-  status: 'out_for_delivery',
-  trackingNumber: 'TR_DHL_774912026',
-  estimatedDelivery: 'July 18 - July 19',
-  shippingAddress: {
-  fullName: 'Emily Johnson',
-  street: '221 Baker Street',
-  city: 'London',
-  state: 'Greater London',
-  zipCode: 'NW1 6XE',
-  country: 'United Kingdom',
-  phone: '+44 7700 900123'
-},
-
-  paymentMethod: 'Cash on Delivery (COD)',
-  date: '2026-07-17',
-  events: [
-    { title: 'Out for Delivery with Courier', description: 'Departed regional carrier facility.', time: '08:30 AM Today', done: true },
-    { title: 'Arrived at Sorting Facility', description: 'Processed at Lahore sorting hub.', time: '04:15 AM Today', done: true },
-    { title: 'In Transit', description: 'Package dispatched from warehouse.', time: '02:00 PM Yesterday', done: true },
-    { title: 'Order Confirmed', description: 'Cash on Delivery order booked.', time: '01:05 PM Yesterday', done: true }
-  ]
-};
-
-const deliveredOrderObj: Order = {
-  id: 'DS-42918-2026',
-  items: [
-    {
-      id: 'blazer-1',
-      product: PRODUCTS.find(p => p.id === 'ds-001') || PRODUCTS[0],
-      quantity: 1,
-      selectedColor: 'Soft Black',
-      selectedSize: 'M'
-    }
-  ],
-  subtotal: 185,
-  discount: 0,
-  tax: 0,
-  shipping: 0,
-  total: 185,
-  status: 'delivered',
-  trackingNumber: 'TR_DHL_429182026',
-  estimatedDelivery: 'July 15, 2026',
-  shippingAddress: {
-  fullName: 'Emily Johnson',
-  street: '221 Baker Street',
-  city: 'London',
-  state: 'Greater London',
-  zipCode: 'NW1 6XE',
-  country: 'United Kingdom',
-  phone: '+44 7700 900123'
-},
-
-  paymentMethod: 'Cash on Delivery (COD)',
-  date: '2026-07-15',
-  events: [
-    { title: 'Delivered at front lobby door', description: 'Signature on file.', time: '03:15 PM July 15', done: true },
-    { title: 'Out for Delivery with Courier', description: 'Departed regional courier facility.', time: '09:00 AM July 15', done: true },
-    { title: 'Order Confirmed', description: 'Cash on Delivery order booked.', time: '10:00 AM July 14', done: true }
-  ]
-};
 
 const getInitials = (name: string) => {
   return name
@@ -111,6 +34,9 @@ interface AccountDashboardProps {
   onLogout?: () => void;
   currentUser?: UserProfile;
   onUpdateProfile?: (updated: { fullName: string; email: string; phone: string }) => void;
+  onBackToHome?: () => void;
+  ordersList?: Order[];
+  recentlyViewed?: Product[];
 }
 
 export default function AccountDashboard({ 
@@ -122,15 +48,18 @@ export default function AccountDashboard({
   onMoveWishToCart = () => {},
   onNavigateToProduct = () => {},
   onLogout = () => {},
-currentUser = {
-  fullName: 'Olivia Thompson',
-  email: 'olivia.thompson@example.co.uk',
-  phone: '+44 7700 900123',
-  status: 'Platinum Tier',
-  memberSince: 'January 2026',
-  loyaltyPoints: 1250,
-},
-  onUpdateProfile = () => {}
+  currentUser = {
+    fullName: 'Guest User',
+    email: 'guest@example.co.uk',
+    phone: '+44 0000 000000',
+    status: 'Guest Tier',
+    memberSince: 'N/A',
+    loyaltyPoints: 0,
+  },
+  onUpdateProfile = () => {},
+  onBackToHome = () => {},
+  ordersList = [],
+  recentlyViewed = []
 }: AccountDashboardProps) {
   const [activeSubTab, setActiveSubTab] = useState(initialSubTab);
   const [trackingOrderId, setTrackingOrderId] = useState<string | null>(initialTrackingOrderId);
@@ -160,18 +89,7 @@ currentUser = {
   }, [initialTrackingOrderId]);
   
   // Addresses State
-  const [addresses, setAddresses] = useState<Address[]>([
-  {
-    fullName: 'Emily Johnson',
-    street: '221 Baker Street',
-    city: 'London',
-    state: 'Greater London',
-    zipCode: 'NW1 6XE',
-    country: 'United Kingdom',
-    phone: '+44 7700 900123',
-    isDefault: true
-  }
-]);
+  const [addresses, setAddresses] = useState<Address[]>([]);
   const [showAddressForm, setShowAddressForm] = useState(false);
   const [newFullName, setNewFullName] = useState('');
   const [newStreet, setNewStreet] = useState('');
@@ -205,30 +123,7 @@ currentUser = {
     setTimeout(() => setProfileSuccessToast(false), 3000);
   };
 
-  const activeOrderObjWithUser = useMemo(() => ({
-    ...activeOrderObj,
-    shippingAddress: {
-      ...activeOrderObj.shippingAddress,
-      fullName: currentUser.fullName
-    }
-  }), [currentUser.fullName]);
 
-  const deliveredOrderObjWithUser = useMemo(() => ({
-    ...deliveredOrderObj,
-    shippingAddress: {
-      ...deliveredOrderObj.shippingAddress,
-      fullName: currentUser.fullName
-    }
-  }), [currentUser.fullName]);
-
-  // Loyalty Program Points
-  const loyaltyPoints = currentUser.loyaltyPoints ?? 750;
-  const loyaltyHistory = [
-    { label: 'Purchased: AeroWeave Knit Blazer', points: '+185 Points', date: '2026-07-15' },
-    { label: 'Product Review submitted (Verified)', points: '+50 Points', date: '2026-07-10' },
-    { label: 'Referral Sign-up: Michael Ross', points: '+500 Points', date: '2026-06-28' },
-    { label: 'Account Activation bonus', points: '+15 Points', date: '2026-06-12' }
-  ];
 
   // Referrals
   const referralCode = useMemo(() => {
@@ -236,6 +131,32 @@ currentUser = {
     return `dreamshelf.com/invite/${firstName}750`;
   }, [currentUser.fullName]);
   const [copiedLink, setCopiedLink] = useState(false);
+
+  const notificationsList = useMemo(() => {
+    const list: { name: string; desc: string; time: string }[] = [];
+    ordersList.forEach((order) => {
+      list.push({
+        name: `Order Confirmed (${order.id})`,
+        desc: `Your order has been confirmed and is being prepared for dispatch.`,
+        time: `${order.date} - Confirmed`
+      });
+      if (order.status === 'shipped' || order.status === 'out_for_delivery' || order.status === 'delivered') {
+        list.push({
+          name: `Courier Dispatch Alert (${order.id})`,
+          desc: `Your package with tracking ID ${order.trackingNumber} has been dispatched.`,
+          time: `${order.date} - Dispatched`
+        });
+      }
+      if (order.status === 'delivered') {
+        list.push({
+          name: `Order Delivered (${order.id})`,
+          desc: `Order was successfully delivered to ${order.shippingAddress.fullName}.`,
+          time: `${order.date} - Delivered`
+        });
+      }
+    });
+    return list.reverse();
+  }, [ordersList]);
 
   const handleCopyLink = () => {
     setCopiedLink(true);
@@ -287,8 +208,8 @@ currentUser = {
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,#1e3a8a_0%,transparent_50%)] opacity-30" />
         <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl" />
         
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="flex items-center gap-6">
+        <div className="relative z-10 flex flex-col items-center justify-center text-center gap-6">
+          <div className="flex flex-col items-center gap-4">
             <div className="relative">
               <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-slate-900 border-2 border-amber-400/40 flex items-center justify-center text-white font-sans text-xl md:text-2xl font-black uppercase shadow-2xl relative">
                 {getInitials(currentUser.fullName)}
@@ -298,23 +219,15 @@ currentUser = {
               </div>
             </div>
             
-            <div>
+            <div className="text-center flex flex-col items-center">
               <span className="font-mono text-[9px] text-amber-400 font-bold uppercase tracking-widest block mb-1">ELITE MEMBER</span>
               <h1 className="font-sans text-xl md:text-3xl font-black tracking-tight uppercase">{currentUser.fullName}</h1>
-              <div className="flex flex-wrap items-center gap-3 mt-1 text-slate-400 text-xs">
+              <div className="flex flex-wrap items-center justify-center gap-3 mt-1 text-slate-400 text-xs">
                 <span className="flex items-center gap-1"><Award className="w-3.5 h-3.5 text-amber-400" /> Gold Status</span>
                 <span className="w-1 h-1 bg-slate-700 rounded-full" />
                 <span>Member since {currentUser.memberSince || 'June 2026'}</span>
               </div>
             </div>
-          </div>
-
-          <div className="bg-slate-900 px-4 py-2.5 rounded-2xl border border-slate-800 flex items-center gap-4">
-            <div className="text-left">
-              <span className="block text-[8px] font-mono text-slate-400 uppercase tracking-widest font-bold font-black">LOYALTY CREDIT BALANCE</span>
-              <span className="block font-mono text-xs font-black text-amber-400">{loyaltyPoints} PTS</span>
-            </div>
-            <Gift className="w-5 h-5 text-amber-400" />
           </div>
         </div>
       </div>
@@ -459,7 +372,14 @@ currentUser = {
 
         {/* PROFILE DETAILS */}
         {activeSubTab === 'profile' && (
-          <div className="max-w-2xl mx-auto space-y-6 animate-fadeIn">
+          <div className="max-w-2xl mx-auto space-y-6 animate-fadeIn text-left">
+            <button 
+              onClick={onBackToHome}
+              className="group flex items-center gap-2 text-[10px] font-mono text-slate-500 hover:text-slate-950 font-bold uppercase tracking-wider mb-2 transition-all cursor-pointer"
+            >
+              <span className="transform group-hover:-translate-x-1 transition-transform duration-200">←</span>
+              <span>Back to Home</span>
+            </button>
             <div className="bg-white rounded-3xl p-6 md:p-8 border border-slate-100 shadow-sm space-y-6">
               <div>
                 <span className="font-mono text-[9px] text-blue-600 font-bold uppercase tracking-widest block mb-1">PERSONAL DETAILS</span>
@@ -528,6 +448,15 @@ currentUser = {
         {/* MY ORDERS LIST */}
         {activeSubTab === 'orders' && (
           <div className="max-w-3xl mx-auto space-y-6 animate-fadeIn text-left">
+            {!trackingOrderId && (
+              <button 
+                onClick={() => setActiveSubTab('profile')}
+                className="group flex items-center gap-2 text-[10px] font-mono text-slate-500 hover:text-slate-950 font-bold uppercase tracking-wider mb-2 transition-all cursor-pointer"
+              >
+                <span className="transform group-hover:-translate-x-1 transition-transform duration-200">←</span>
+                <span>Back to Profile</span>
+              </button>
+            )}
             {trackingOrderId ? (
               <div className="space-y-4">
                 <button
@@ -544,7 +473,7 @@ currentUser = {
                     setTrackingOrderId(null);
                     if (onClearTracking) onClearTracking();
                   }}
-                  activeOrder={trackingOrderId === 'DS-77491-2026' ? activeOrderObjWithUser : deliveredOrderObjWithUser}
+                  activeOrder={ordersList.find((o) => o.id === trackingOrderId)}
                 />
               </div>
             ) : (
@@ -557,94 +486,91 @@ currentUser = {
                 </div>
                 
                 <div className="space-y-4 text-left">
-                  {/* Active Order */}
-                  <div className="bg-white rounded-3xl border border-slate-100 p-6 shadow-sm space-y-4 relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50/5 rounded-full blur-2xl" />
-                    
-                    <div className="flex flex-wrap justify-between items-center gap-4 border-b border-slate-100 pb-4 relative z-10">
-                      <div className="space-y-1">
-                        <span className="font-mono text-[9px] text-slate-400 block font-bold">ORDER ID REFERENCE</span>
-                        <span className="font-mono text-xs font-bold text-slate-900 bg-slate-50 border border-slate-100 px-2 py-0.5 rounded">DS-77491-2026</span>
+                  {ordersList.length === 0 ? (
+                    <div className="bg-white rounded-3xl border border-slate-100 p-12 text-center max-w-xl mx-auto space-y-4 shadow-sm animate-fadeIn">
+                      <div className="w-12 h-12 bg-slate-50 text-slate-400 rounded-full flex items-center justify-center mx-auto">
+                        <ShoppingBag className="w-6 h-6" />
                       </div>
-                      <div className="space-y-1 md:text-right">
-                        <span className="font-mono text-[9px] text-slate-400 block font-bold">ORDER DATE</span>
-                        <span className="text-xs text-slate-700 font-bold font-sans">July 17, 2026</span>
-                      </div>
-                      <div className="space-y-1 md:text-right">
-                        <span className="font-mono text-[9px] text-slate-400 block font-bold">ORDER TOTAL</span>
-                        <span className="font-mono text-xs font-black text-blue-600 bg-blue-50/50 border border-blue-100 px-2.5 py-0.5 rounded">{formatPrice(340.00)}</span>
-                      </div>
-                      <div>
-                        <span className="inline-flex items-center gap-1.5 bg-blue-50 text-blue-700 font-mono text-[9px] font-bold px-2.5 py-1 rounded border border-blue-100 uppercase tracking-wider animate-pulse">
-                          IN TRANSIT
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="flex gap-4 items-center">
-                      <img src="https://images.unsplash.com/photo-1542751371-adc38448a05e?w=400&q=80" alt="" className="w-14 h-14 object-cover rounded-xl border border-slate-100 shadow-sm" />
-                      <div className="flex-1 min-w-0 text-xs text-left">
-                        <span className="font-mono text-[8px] text-slate-400 block uppercase font-bold tracking-wider">Acoustics Devices</span>
-                        <h4 className="font-sans font-extrabold text-slate-900 truncate">Cellulose Spatial Audio Speaker</h4>
-                        <span className="text-slate-400 font-mono text-[10px] block mt-1">Tone: Matte Silver • Qty: 1</span>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-wrap items-center justify-between pt-4 border-t border-slate-100 text-xs font-sans gap-3">
-                      <div className="flex items-center gap-1.5 text-[11px] text-slate-500 font-medium">
-                        <Smartphone className="w-3.5 h-3.5 text-emerald-500 animate-bounce" />
-                        <span>Estimated arrival: Tomorrow via Courier Express (Cash on Delivery)</span>
-                      </div>
+                      <h3 className="font-sans font-bold text-slate-800 text-sm uppercase tracking-wider">No Orders Placed Yet</h3>
+                      <p className="text-slate-500 text-xs leading-relaxed max-w-xs mx-auto">
+                        You haven't placed any purchases yet. Your active transaction history and parcel tracking status will appear here.
+                      </p>
                       <button 
-                        onClick={() => setTrackingOrderId('DS-77491-2026')}
-                        className="px-4 py-2 bg-slate-900 hover:bg-blue-600 text-white font-sans text-[10px] font-bold rounded-xl transition-colors uppercase tracking-wider cursor-pointer"
+                        onClick={onBackToHome}
+                        className="px-5 py-2.5 bg-slate-900 text-white font-mono text-[10px] font-bold rounded-xl hover:bg-blue-600 transition-all uppercase tracking-wider cursor-pointer"
                       >
-                        Track Order Status
+                        Discover Pieces
                       </button>
                     </div>
-                  </div>
+                  ) : (
+                    ordersList.map((order) => {
+                      const firstItem = order.items[0];
+                      const otherItemsCount = order.items.length - 1;
+                      
+                      return (
+                        <div key={order.id} className="bg-white rounded-3xl border border-slate-100 p-6 shadow-sm space-y-4 relative overflow-hidden">
+                          <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50/5 rounded-full blur-2xl" />
+                          
+                          <div className="flex flex-wrap justify-between items-center gap-4 border-b border-slate-100 pb-4 relative z-10">
+                            <div className="space-y-1">
+                              <span className="font-mono text-[9px] text-slate-400 block font-bold">ORDER ID REFERENCE</span>
+                              <span className="font-mono text-xs font-bold text-slate-900 bg-slate-50 border border-slate-100 px-2 py-0.5 rounded">{order.id}</span>
+                            </div>
+                            <div className="space-y-1 md:text-right">
+                              <span className="font-mono text-[9px] text-slate-400 block font-bold">ORDER DATE</span>
+                              <span className="text-xs text-slate-700 font-bold font-sans">{order.date}</span>
+                            </div>
+                            <div className="space-y-1 md:text-right">
+                              <span className="font-mono text-[9px] text-slate-400 block font-bold">ORDER TOTAL</span>
+                              <span className="font-mono text-xs font-black text-blue-600 bg-blue-50/50 border border-blue-100 px-2.5 py-0.5 rounded">{formatPrice(order.total)}</span>
+                            </div>
+                            <div>
+                              <StatusBadge status={order.status} />
+                            </div>
+                          </div>
 
-                  {/* Delivered Order */}
-                  <div className="bg-white rounded-3xl border border-slate-100 p-6 shadow-sm space-y-4">
-                    <div className="flex flex-wrap justify-between items-center gap-4 border-b border-slate-100 pb-4">
-                      <div className="space-y-1">
-                        <span className="font-mono text-[9px] text-slate-400 block font-bold">ORDER ID REFERENCE</span>
-                        <span className="font-mono text-xs font-bold text-slate-500 bg-slate-50 border border-slate-100 px-2 py-0.5 rounded">DS-42918-2026</span>
-                      </div>
-                      <div className="space-y-1 md:text-right">
-                        <span className="font-mono text-[9px] text-slate-400 block font-bold">ORDER DATE</span>
-                        <span className="text-xs text-slate-600 font-bold font-sans">July 15, 2026</span>
-                      </div>
-                      <div className="space-y-1 md:text-right">
-                        <span className="font-mono text-[9px] text-slate-400 block font-bold">ORDER TOTAL</span>
-                        <span className="font-mono text-xs font-bold text-slate-700 bg-slate-50 border border-slate-100 px-2 py-0.5 rounded">{formatPrice(115.00)}</span>
-                      </div>
-                      <div>
-                        <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 font-mono text-[9px] font-bold px-2.5 py-1 rounded border border-emerald-100 uppercase tracking-wider">
-                          DELIVERED
-                        </span>
-                      </div>
-                    </div>
+                          {firstItem && (
+                            <div className="flex gap-4 items-center">
+                              <img 
+                                src={firstItem.product.images[0]} 
+                                alt={firstItem.product.name} 
+                                className="w-14 h-14 object-cover rounded-xl border border-slate-100 shadow-sm" 
+                              />
+                              <div className="flex-1 min-w-0 text-xs text-left">
+                                <span className="font-mono text-[8px] text-slate-400 block uppercase font-bold tracking-wider">{firstItem.product.category}</span>
+                                <h4 className="font-sans font-extrabold text-slate-900 truncate">{firstItem.product.name}</h4>
+                                <span className="text-slate-400 font-mono text-[10px] block mt-1">
+                                  Tone: {firstItem.selectedColor} • Size: {firstItem.selectedSize} • Qty: {firstItem.quantity}
+                                  {otherItemsCount > 0 && ` (+${otherItemsCount} other item${otherItemsCount > 1 ? 's' : ''})`}
+                                </span>
+                              </div>
+                            </div>
+                          )}
 
-                    <div className="flex gap-4 items-center">
-                      <img src="https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=400&q=80" alt="" className="w-14 h-14 object-cover rounded-xl border border-slate-100 shadow-sm" />
-                      <div className="flex-1 min-w-0 text-xs text-left">
-                        <span className="font-mono text-[8px] text-slate-400 block uppercase font-bold tracking-wider">Curated Apparel</span>
-                        <h4 className="font-sans font-extrabold text-slate-900 truncate">AeroWeave Knit Blazer</h4>
-                        <span className="text-slate-400 font-mono text-[10px] block mt-1">Tone: Soft Black • Qty: 1</span>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-wrap items-center justify-between pt-4 border-t border-slate-100 text-xs font-sans gap-3">
-                      <span className="text-[11px] text-emerald-600 font-bold flex items-center gap-1 text-left">✓ Delivered and COD Cash Settled successfully</span>
-                      <button 
-                        onClick={() => setTrackingOrderId('DS-42918-2026')}
-                        className="px-4 py-2 bg-slate-50 text-slate-700 hover:bg-slate-100 font-sans text-[10px] font-bold rounded-xl transition-colors uppercase tracking-wider cursor-pointer"
-                      >
-                        Track Shipment Details
-                      </button>
-                    </div>
-                  </div>
+                          <div className="flex flex-wrap items-center justify-between pt-4 border-t border-slate-100 text-xs font-sans gap-3">
+                            <div className="flex items-center gap-1.5 text-[11px] text-slate-500 font-medium text-left">
+                              {order.status === 'delivered' ? (
+                                <span className="text-emerald-600 font-bold flex items-center gap-1 text-left">✓ Delivered and Settled successfully</span>
+                              ) : order.status === 'cancelled' ? (
+                                <span className="text-red-600 font-bold flex items-center gap-1 text-left">✕ Cancelled</span>
+                              ) : (
+                                <>
+                                  <Smartphone className="w-3.5 h-3.5 text-emerald-500 animate-bounce" />
+                                  <span>Estimated arrival: {order.estimatedDelivery} ({order.paymentMethod})</span>
+                                </>
+                              )}
+                            </div>
+                            <button 
+                              onClick={() => setTrackingOrderId(order.id)}
+                              className="px-4 py-2 bg-slate-900 hover:bg-blue-600 text-white font-sans text-[10px] font-bold rounded-xl transition-colors uppercase tracking-wider cursor-pointer"
+                            >
+                              Track Order Status
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
                 </div>
               </>
             )}
@@ -654,6 +580,13 @@ currentUser = {
         {/* WISHLIST */}
         {activeSubTab === 'wishlist' && (
           <div className="max-w-3xl mx-auto space-y-6 animate-fadeIn text-left">
+            <button 
+              onClick={() => setActiveSubTab('profile')}
+              className="group flex items-center gap-2 text-[10px] font-mono text-slate-500 hover:text-slate-950 font-bold uppercase tracking-wider mb-2 transition-all cursor-pointer"
+            >
+              <span className="transform group-hover:-translate-x-1 transition-transform duration-200">←</span>
+              <span>Back to Profile</span>
+            </button>
             <div>
               <span className="font-mono text-[9px] text-blue-600 font-bold uppercase tracking-widest block mb-1">SAVED PIECES</span>
               <h3 className="font-sans font-black text-slate-900 text-lg uppercase tracking-tight flex items-center gap-2">
@@ -722,6 +655,13 @@ currentUser = {
         {/* RECENTLY VIEWED PRODUCTS */}
         {activeSubTab === 'recentlyViewed' && (
           <div className="max-w-3xl mx-auto space-y-6 animate-fadeIn text-left">
+            <button 
+              onClick={() => setActiveSubTab('profile')}
+              className="group flex items-center gap-2 text-[10px] font-mono text-slate-500 hover:text-slate-950 font-bold uppercase tracking-wider mb-2 transition-all cursor-pointer"
+            >
+              <span className="transform group-hover:-translate-x-1 transition-transform duration-200">←</span>
+              <span>Back to Profile</span>
+            </button>
             <div>
               <span className="font-mono text-[9px] text-blue-600 font-bold uppercase tracking-widest block mb-1">SAVED DECOR & FASHION</span>
               <h3 className="font-sans font-black text-slate-900 text-lg uppercase tracking-tight flex items-center gap-2">
@@ -729,53 +669,78 @@ currentUser = {
               </h3>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {PRODUCTS.slice(0, 3).map((p) => (
-                <div 
-                  key={p.id}
-                  className="bg-white border border-slate-100 rounded-3xl p-5 shadow-sm hover:shadow-lg hover:border-slate-200 transition-all flex flex-col justify-between group overflow-hidden"
-                >
-                  <div className="space-y-4">
-                    <div className="relative aspect-square rounded-2xl overflow-hidden bg-slate-50/50">
-                      <img src={p.images[0]} alt="" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
-                      <span className="absolute top-3 left-3 bg-slate-950 text-white font-mono text-[8px] font-bold px-2 py-0.5 rounded tracking-wider uppercase">
-                        BOOKMARKED
-                      </span>
-                    </div>
-
-                    <div className="space-y-1.5 text-xs text-left">
-                      <div className="flex justify-between items-center text-[10px] font-mono text-slate-400">
-                        <span className="uppercase font-bold tracking-wider">{p.brand}</span>
-                        <span className="font-mono text-slate-950 font-black">{formatPrice(p.price)}</span>
-                      </div>
-                      <h3 className="font-sans font-extrabold text-slate-900 text-sm line-clamp-1 group-hover:text-blue-600 transition-colors cursor-pointer text-left" onClick={() => onNavigateToProduct(p.id)}>
-                        {p.name}
-                      </h3>
-                      <p className="text-slate-400 text-[11px] line-clamp-2 h-8 leading-relaxed text-left">
-                        {p.description}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="pt-3 border-t border-slate-100 mt-4 flex justify-between items-center">
-                    <span className="text-[9px] font-mono text-emerald-600 font-bold uppercase tracking-wider flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping" /> IN STOCK
-                    </span>
-                    <button 
-                      onClick={() => onNavigateToProduct(p.id)}
-                      className="px-3.5 py-1.5 bg-slate-900 hover:bg-blue-600 text-white text-[10px] font-bold rounded-lg uppercase tracking-wider font-sans transition-colors cursor-pointer"
-                    >
-                      View Details
-                    </button>
-                  </div>
+            {recentlyViewed.length === 0 ? (
+              <div className="bg-white rounded-3xl border border-slate-100 p-12 text-center max-w-xl mx-auto space-y-4 shadow-sm animate-fadeIn">
+                <div className="w-12 h-12 bg-slate-50 text-slate-400 rounded-full flex items-center justify-center mx-auto">
+                  <Eye className="w-6 h-6" />
                 </div>
-              ))}
-            </div>
+                <h3 className="font-sans font-bold text-slate-800 text-sm uppercase tracking-wider">No Recently Viewed Pieces</h3>
+                <p className="text-slate-500 text-xs leading-relaxed max-w-xs mx-auto">
+                  Products you browse will appear here so you can easily find them later.
+                </p>
+                <button 
+                  onClick={onBackToHome}
+                  className="px-5 py-2.5 bg-slate-900 hover:bg-blue-600 text-white font-mono text-[10px] font-bold rounded-xl transition-all uppercase tracking-wider cursor-pointer"
+                >
+                  Discover Products
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {recentlyViewed.map((p) => (
+                  <div 
+                    key={p.id}
+                    className="bg-white border border-slate-100 rounded-3xl p-5 shadow-sm hover:shadow-lg hover:border-slate-200 transition-all flex flex-col justify-between group overflow-hidden"
+                  >
+                    <div className="space-y-4">
+                      <div className="relative aspect-square rounded-2xl overflow-hidden bg-slate-50/50">
+                        <img src={p.images[0]} alt="" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                        <span className="absolute top-3 left-3 bg-slate-950 text-white font-mono text-[8px] font-bold px-2 py-0.5 rounded tracking-wider uppercase">
+                          VIEWED
+                        </span>
+                      </div>
+
+                      <div className="space-y-1.5 text-xs text-left">
+                        <div className="flex justify-between items-center text-[10px] font-mono text-slate-400">
+                          <span className="uppercase font-bold tracking-wider">{p.brand}</span>
+                          <span className="font-mono text-slate-950 font-black">{formatPrice(p.price)}</span>
+                        </div>
+                        <h3 className="font-sans font-extrabold text-slate-900 text-sm line-clamp-1 group-hover:text-blue-600 transition-colors cursor-pointer text-left" onClick={() => onNavigateToProduct(p.id)}>
+                          {p.name}
+                        </h3>
+                        <p className="text-slate-400 text-[11px] line-clamp-2 h-8 leading-relaxed text-left">
+                          {p.description}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="pt-3 border-t border-slate-100 mt-4 flex justify-between items-center">
+                      <span className="text-[9px] font-mono text-emerald-600 font-bold uppercase tracking-wider flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping" /> IN STOCK
+                      </span>
+                      <button 
+                        onClick={() => onNavigateToProduct(p.id)}
+                        className="px-3.5 py-1.5 bg-slate-900 hover:bg-blue-600 text-white text-[10px] font-bold rounded-lg uppercase tracking-wider font-sans transition-colors cursor-pointer"
+                      >
+                        View Details
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
         {/* ADDRESS DIRECTORIES */}
         {activeSubTab === 'addresses' && (
           <div className="max-w-2xl mx-auto space-y-6 animate-fadeIn text-left">
+            <button 
+              onClick={() => setActiveSubTab('profile')}
+              className="group flex items-center gap-2 text-[10px] font-mono text-slate-500 hover:text-slate-950 font-bold uppercase tracking-wider mb-2 transition-all cursor-pointer"
+            >
+              <span className="transform group-hover:-translate-x-1 transition-transform duration-200">←</span>
+              <span>Back to Profile</span>
+            </button>
             <div className="flex justify-between items-center">
               <div>
                 <span className="font-mono text-[9px] text-blue-600 font-bold uppercase tracking-widest block">SAVED ADDRESSES</span>
@@ -872,6 +837,13 @@ currentUser = {
         {/* NOTIFICATIONS */}
         {activeSubTab === 'notifications' && (
           <div className="max-w-2xl mx-auto space-y-6 animate-fadeIn text-left">
+            <button 
+              onClick={() => setActiveSubTab('profile')}
+              className="group flex items-center gap-2 text-[10px] font-mono text-slate-500 hover:text-slate-950 font-bold uppercase tracking-wider mb-2 transition-all cursor-pointer"
+            >
+              <span className="transform group-hover:-translate-x-1 transition-transform duration-200">←</span>
+              <span>Back to Profile</span>
+            </button>
             <div className="bg-white rounded-3xl p-6 md:p-8 border border-slate-100 shadow-sm space-y-5 font-sans text-xs">
               <div>
                 <span className="font-mono text-[9px] text-blue-600 font-bold uppercase tracking-widest block mb-1">TRANSACTIONAL INBOX</span>
@@ -881,20 +853,25 @@ currentUser = {
               </div>
 
               <div className="space-y-4 text-left">
-                {[
-                  { title: 'COD Order Confirmed', desc: 'Your Cash on Delivery order DS-77491-2026 has been confirmed and booked for Lahore delivery.', time: 'July 17, 2026 - 01:05 PM' },
-                  { title: 'Courier Dispatch Alert', desc: 'Package containing "Cellulose Spatial Audio Speaker" has been dispatched with tracking ID TR_DHL_774912026.', time: 'July 17, 2026 - 02:00 PM' },
-                  { title: 'Order Delivered & Settled', desc: 'Order DS-42918-2026 was delivered. Cash payment was collected successfully by our courier partner.', time: 'July 15, 2026 - 03:15 PM' },
-                ].map((notif, idx) => (
-                  <div key={idx} className="flex gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-100 text-left">
-                    <div className="w-2 h-2 rounded-full bg-blue-600 mt-1.5 shrink-0" />
-                    <div>
-                      <span className="font-bold text-slate-950 block">{notif.title}</span>
-                      <p className="text-slate-500 mt-0.5 leading-relaxed">{notif.desc}</p>
-                      <span className="font-mono text-[9px] text-slate-400 mt-1.5 block">{notif.time}</span>
-                    </div>
+                {notificationsList.length === 0 ? (
+                  <div className="p-8 text-center bg-slate-50 rounded-2xl border border-slate-100/50">
+                    <span className="text-slate-400 font-mono text-[10px] block uppercase font-bold mb-1">Inbox Clean</span>
+                    <p className="text-slate-500 text-xs leading-relaxed max-w-xs mx-auto">
+                      Your notification inbox is currently empty. Place an order or trigger transaction events to receive live updates.
+                    </p>
                   </div>
-                ))}
+                ) : (
+                  notificationsList.map((notif, idx) => (
+                    <div key={idx} className="flex gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-100 text-left">
+                      <div className="w-2 h-2 rounded-full bg-blue-600 mt-1.5 shrink-0" />
+                      <div>
+                        <span className="font-bold text-slate-950 block">{notif.name}</span>
+                        <p className="text-slate-500 mt-0.5 leading-relaxed">{notif.desc}</p>
+                        <span className="font-mono text-[9px] text-slate-400 mt-1.5 block">{notif.time}</span>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           </div>
@@ -903,6 +880,13 @@ currentUser = {
         {/* HELP & SUPPORT */}
         {activeSubTab === 'support' && (
           <div className="max-w-2xl mx-auto space-y-6 animate-fadeIn text-left">
+            <button 
+              onClick={() => setActiveSubTab('profile')}
+              className="group flex items-center gap-2 text-[10px] font-mono text-slate-500 hover:text-slate-950 font-bold uppercase tracking-wider mb-2 transition-all cursor-pointer"
+            >
+              <span className="transform group-hover:-translate-x-1 transition-transform duration-200">←</span>
+              <span>Back to Profile</span>
+            </button>
             <div className="bg-white rounded-3xl p-6 md:p-8 border border-slate-100 shadow-sm space-y-5 font-sans text-xs">
               <div>
                 <span className="font-mono text-[9px] text-blue-600 font-bold uppercase tracking-widest block mb-1">CLIENT CONCIERGE</span>

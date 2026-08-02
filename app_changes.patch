@@ -55,19 +55,61 @@ index 0cd878b..b0505f4 100644
 +  useEffect(() => {
 +  async function loadProducts() {
 +    try {
-+      console.log("Loading products from Firebase...");
++      console.log(firebaseProducts[0]);
 +
 +      const firebaseProducts = await getProducts();
-+
-+      console.log("Firebase returned:", firebaseProducts);
-+
-+      if (firebaseProducts.length > 0) {
-+        setProductsList(firebaseProducts as Product[]);
-+        setSelectedProduct(firebaseProducts[0] as Product);
-+      }
-+    } catch (error) {
-+      console.error("Error loading Firebase products:", error);
-+    }
+
+console.log("Firebase returned:", firebaseProducts);
+
+const mappedProducts: Product[] = firebaseProducts.map((p: any) => ({
+  id: p.id,
+
+  // Fix field names
+  name: p.name|| "",
+  price: Number(p.price || 0),
+  originalPrice: p.discount > 0
+    ? Number((p.price / (1 - p.discount / 100)).toFixed(2))
+    : undefined,
+
+  description: p.description || "",
+
+  images:
+    p.images && p.images.length
+      ? p.images
+      : p.image
+      ? [p.image]
+      : [],
+
+  category: p.category || "Other",
+  subcategory: p.category || "Other",
+
+  rating: Number(p.rating || 0),
+  reviewCount: Number(p.reviewCount || 0),
+
+  brand: p.brand || "",
+
+  colors: p.colors || [],
+  sizes: p.sizes || [],
+
+  stock: Number(p.stock || 0),
+
+  specs: {},
+
+  reviews: [],
+
+  isFeatured: p.featured || false,
+  isNew: false,
+  isFlashDeal: p.sale || false,
+  discountPercent: p.discount || 0,
+
+  estimatedDelivery: "2–5 Business Days",
+}));
+
+setProductsList(mappedProducts);
+
+if (mappedProducts.length > 0) {
+  setSelectedProduct(mappedProducts[0]);
+}
 +  }
 +
 +  loadProducts();

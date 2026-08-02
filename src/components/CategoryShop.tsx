@@ -49,6 +49,11 @@ export function mapMegaCategoryToCatalog(megaCategory: string): string {
   return mapping[megaCategory] || megaCategory;
 }
 
+export function matchProductCategory(p: Product, category: string): boolean {
+  if (category.toLowerCase() === 'all') return true;
+  return p.category.toLowerCase() === category.toLowerCase();
+}
+
 export default function CategoryShop({ 
   onNavigateToProduct, onAddToCart, onAddToWishlist, wishlistIds, 
   initialCategoryFilter = 'All', initialBrandFilter = 'All', productsList, onBackToHome
@@ -132,11 +137,8 @@ export default function CategoryShop({
     triggerLoading();
   };
 
-  // Available Categories in Catalog
   const categories = [
-    'All', 'Fashion', 'Electronics', 'Home Decor', 'Gym Wear', 'Beauty', 'Collectibles', 'Books',
-    'Kitchen & Dining', 'Health & Wellness', 'Baby & Kids', 'Toys & Games', 'Automotive', 'Pet Supplies', 
-    'Accessories', 'Gifts', 'Seasonal Deals'
+    'All', 'Fashion', 'Toys & Games', 'Sports & Outdoors', 'Health & Personal Care', 'Home & Garden', 'Electronics', 'Food & Grocery', 'Other'
   ];
   
   // Available Brands in catalog
@@ -147,10 +149,10 @@ export default function CategoryShop({
       .filter(Boolean)
   )
 );
-
   // Available unique colors & sizes gathered from catalog for high fidelity
   const uniqueColors = ['All', ...Array.from(new Set(productsList.flatMap(p => p.colors || [])))].slice(0, 8);
   const uniqueSizes = ['All', ...Array.from(new Set(productsList.flatMap(p => p.sizes || [])))].slice(0, 6);
+
 
   // Price range options
   const priceRangeOptions = [
@@ -160,19 +162,13 @@ export default function CategoryShop({
 ];
 
   // Filtering calculation logic
-  const filteredProducts = productsList.filter((p) => {
+  console.log("========== CATEGORY SHOP DEBUG ==========");
+  console.log("productsList.length =", productsList.length);
+  console.log("productsList =", productsList);
+  console.log("selectedCategory =", selectedCategory);
+  const filteredProducts = productsList.filter((p, index) => {
     // 1. Category match with custom mappings for extended list
-    let matchesCategory = false;
-    if (selectedCategory === 'All') {
-      matchesCategory = true;
-    } else if (selectedCategory === 'Seasonal Deals') {
-      matchesCategory = !!p.isFlashDeal || (p.discountPercent !== undefined && p.discountPercent > 0);
-    } else if (selectedCategory === 'Accessories') {
-      matchesCategory = p.category === 'Accessories' || p.subcategory.toLowerCase().includes('gadgets') || p.name.toLowerCase().includes('headphones') || p.name.toLowerCase().includes('wallet');
-    } else {
-      const mapped = mapMegaCategoryToCatalog(selectedCategory);
-      matchesCategory = p.category === mapped || p.subcategory === mapped || p.category === selectedCategory || p.subcategory === selectedCategory;
-    }
+    const matchesCategory = matchProductCategory(p, selectedCategory);
     
     // 2. Multiple Brands match
     const matchesBrand = selectedBrands.length === 0 || selectedBrands.includes(p.brand);
@@ -181,9 +177,9 @@ export default function CategoryShop({
     let matchesPrice = true;
     if (selectedPriceRanges.length > 0) {
       matchesPrice = selectedPriceRanges.some(range => {
-        if (range === 'under_5000') return p.price < 5000;
-        if (range === '5000_20000') return p.price >= 5000 && p.price <= 20000;
-        if (range === 'over_20000') return p.price > 20000;
+        if (range === '0-50') return p.price < 50;
+        if (range === '50-150') return p.price >= 50 && p.price <= 150;
+        if (range === '150+') return p.price > 150;
         return true;
       });
     }
@@ -211,6 +207,21 @@ export default function CategoryShop({
       matchesCondition = selectedCondition === productCondition;
     }
 
+    if (index < 5) {
+      console.log({
+        title: p.name || (p as any).title,
+        matchesCategory,
+        matchesBrand,
+        matchesPrice,
+        matchesRating,
+        matchesStock,
+        matchesDiscount,
+        matchesColor,
+        matchesSize,
+        matchesCondition
+      });
+    }
+
     return matchesCategory && matchesBrand && matchesPrice && matchesRating && matchesStock && matchesDiscount && matchesColor && matchesSize && matchesCondition;
   }).sort((a, b) => {
     if (sortBy === 'rating') return b.rating - a.rating;
@@ -221,6 +232,10 @@ export default function CategoryShop({
     if (sortBy === 'discount') return (b.discountPercent || 0) - (a.discountPercent || 0);
     return 0;
   });
+  console.log("filteredProducts =", filteredProducts.length);
+  const PRODUCTS_PER_PAGE = 60;
+
+const visibleProducts = filteredProducts.slice(0, PRODUCTS_PER_PAGE);
 
   return (
     <div id="shop-root" className="space-y-6 font-sans">
@@ -254,7 +269,7 @@ export default function CategoryShop({
               id="view-grid-btn"
               onClick={() => setViewMode('grid')}
               className={`p-2 rounded-lg transition-colors cursor-pointer ${viewMode === 'grid' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
-              title="Grid View"
+              name="Grid View"
             >
               <Grid className="w-4 h-4" />
             </button>
@@ -262,7 +277,7 @@ export default function CategoryShop({
               id="view-list-btn"
               onClick={() => setViewMode('list')}
               className={`p-2 rounded-lg transition-colors cursor-pointer ${viewMode === 'list' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
-              title="List View"
+              name="List View"
             >
               <List className="w-4 h-4" />
             </button>
@@ -289,10 +304,10 @@ export default function CategoryShop({
 
       {/* Categories Horizontal Tabs bar */}
       <div className="overflow-x-auto whitespace-nowrap pb-2 flex gap-2 no-scrollbar">
-        {categories.map((cat) => (
+        {categories.map((cat, catIdx) => (
           <button
             id={`filter-tab-${cat.replace(/\s+/g, '-')}`}
-            key={cat}
+            key={`${cat}-${catIdx}`}
             onClick={() => handleCategoryChange(cat)}
             className={`px-4 py-2.5 rounded-xl text-xs font-semibold font-sans transition-all cursor-pointer ${
               selectedCategory === cat
@@ -304,7 +319,6 @@ export default function CategoryShop({
           </button>
         ))}
       </div>
-
       {/* Main Grid: Filters Panel Left + Products List Right */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
         
@@ -332,7 +346,7 @@ export default function CategoryShop({
                   id="reset-filters-btn"
                   onClick={handleResetFilters}
                   className="text-[10px] font-mono text-red-500 hover:text-red-700 font-bold flex items-center gap-1 cursor-pointer"
-                  title="Clear all active filters"
+                  name="Clear all active filters"
                 >
                   <RotateCcw className="w-3 h-3" /> Clear
                 </button>
@@ -343,8 +357,8 @@ export default function CategoryShop({
             <div className="space-y-2.5">
               <span className="block text-[10px] font-mono text-slate-400 uppercase tracking-wider font-bold">Boutique Brands</span>
               <div className="space-y-1.5 font-sans text-xs max-h-36 overflow-y-auto pr-2">
-                {brands.map((brand) => (
-                  <label key={brand} className="flex items-center gap-2.5 text-slate-600 hover:text-slate-900 cursor-pointer select-none">
+                {brands.map((brand, brandIdx) => (
+                  <label key={`${brand}-${brandIdx}`} className="flex items-center gap-2.5 text-slate-600 hover:text-slate-900 cursor-pointer select-none">
                     <input 
                       id={`brand-check-${brand.replace(/\s+/g, '-')}`}
                       type="checkbox" 
@@ -358,33 +372,41 @@ export default function CategoryShop({
               </div>
             </div>
 
-            {/* Price Checkboxes */}
-            <div className="space-y-2.5 border-t border-slate-100/80 pt-4">
-              <span className="block text-[10px] font-mono text-slate-400 uppercase tracking-wider font-bold">Price Brackets</span>
-              <div className="space-y-1.5 font-sans text-xs">
-                {priceRangeOptions.map((pr) => (
-                  <label key={pr.val} className="flex items-center gap-2.5 text-slate-600 hover:text-slate-900 cursor-pointer select-none">
-                    <input 
-                      id={`price-check-${pr.val}`}
-                      type="checkbox" 
-                      checked={selectedPriceRanges.includes(pr.val)} 
-                      onChange={() => handlePriceRangeToggle(pr.val)}
-                      className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-3.5 h-3.5" 
-                    />
-                    <span className="font-medium text-slate-700">{pr.label}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
+          {/* Price Checkboxes */}
+<div className="space-y-2.5 border-t border-slate-100/80 pt-4">
+  <span className="block text-[10px] font-mono text-slate-400 uppercase tracking-wider font-bold">
+    Price Brackets
+  </span>
+
+  <div className="space-y-1.5 font-sans text-xs">
+    {priceRangeOptions.map((pr, prIdx) => (
+      <label
+        key={`${pr.value}-${prIdx}`}
+        className="flex items-center gap-2.5 text-slate-600 hover:text-slate-900 cursor-pointer select-none"
+      >
+        <input
+          id={`price-check-${pr.value}`}
+          type="checkbox"
+          checked={selectedPriceRanges.includes(pr.value)}
+          onChange={() => handlePriceRangeToggle(pr.value)}
+          className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-3.5 h-3.5"
+        />
+        <span className="font-medium text-slate-700">
+          {pr.label}
+        </span>
+      </label>
+    ))}
+  </div>
+</div>
 
             {/* Ratings Slider/Selector */}
             <div className="space-y-2.5 border-t border-slate-100/80 pt-4">
               <span className="block text-[10px] font-mono text-slate-400 uppercase tracking-wider font-bold">Minimum Appraised Rating</span>
               <div className="flex gap-1.5 font-mono text-[10px]">
-                {[0, 3, 4, 4.5].map((stars) => (
+                {[0, 3, 4, 4.5].map((stars, starsIdx) => (
                   <button
                     id={`rating-filter-btn-${stars}`}
-                    key={stars}
+                    key={`${stars}-${starsIdx}`}
                     onClick={() => { setMinRating(stars); triggerLoading(); }}
                     className={`flex-1 py-1.5 rounded-lg border text-center font-bold cursor-pointer transition-all ${
                       minRating === stars
@@ -402,10 +424,10 @@ export default function CategoryShop({
             <div className="space-y-2.5 border-t border-slate-100/80 pt-4">
               <span className="block text-[10px] font-mono text-slate-400 uppercase tracking-wider font-bold">Aesthetic Colors</span>
               <div className="flex flex-wrap gap-1.5">
-                {uniqueColors.map((color) => (
+                {uniqueColors.map((color, colorIdx) => (
                   <button
                     id={`color-filter-${color}`}
-                    key={color}
+                    key={`${color}-${colorIdx}`}
                     onClick={() => { setSelectedColor(color); triggerLoading(); }}
                     className={`px-2.5 py-1 rounded-lg text-[10px] font-semibold border transition-all cursor-pointer ${
                       selectedColor === color
@@ -423,10 +445,10 @@ export default function CategoryShop({
             <div className="space-y-2.5 border-t border-slate-100/80 pt-4">
               <span className="block text-[10px] font-mono text-slate-400 uppercase tracking-wider font-bold">Dimensions & Sizes</span>
               <div className="flex flex-wrap gap-1.5">
-                {uniqueSizes.map((size) => (
+                {uniqueSizes.map((size, sizeIdx) => (
                   <button
                     id={`size-filter-${size}`}
-                    key={size}
+                    key={`${size}-${sizeIdx}`}
                     onClick={() => { setSelectedSize(size); triggerLoading(); }}
                     className={`px-2.5 py-1 rounded-lg text-[10px] font-semibold border transition-all cursor-pointer ${
                       selectedSize === size
@@ -444,10 +466,10 @@ export default function CategoryShop({
             <div className="space-y-2.5 border-t border-slate-100/80 pt-4">
               <span className="block text-[10px] font-mono text-slate-400 uppercase tracking-wider font-bold">Item Condition</span>
               <div className="grid grid-cols-3 gap-1 font-sans text-[10px]">
-                {['All', 'New', 'Renewed'].map((cond) => (
+                {['All', 'New', 'Renewed'].map((cond, condIdx) => (
                   <button
                     id={`condition-filter-${cond}`}
-                    key={cond}
+                    key={`${cond}-${condIdx}`}
                     onClick={() => { setSelectedCondition(cond); triggerLoading(); }}
                     className={`py-1.5 border rounded-lg font-bold text-center cursor-pointer transition-all ${
                       selectedCondition === cond
@@ -498,7 +520,7 @@ export default function CategoryShop({
             <button 
               id="mobile-filters-trigger"
               onClick={() => setIsMobileFiltersOpen(!isMobileFiltersOpen)} 
-              className="lg:hidden flex items-center gap-1.5 px-4 py-2 bg-white border border-slate-250 border-slate-200 rounded-xl text-slate-900 font-bold hover:bg-slate-50 transition-colors shadow-sm"
+              className="lg:hidden flex items-center gap-1.5 px-4 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 font-bold hover:bg-slate-50 transition-colors shadow-sm"
             >
               <SlidersHorizontal className="w-3.5 h-3.5" /> Filter / Sort
             </button>
@@ -526,25 +548,26 @@ export default function CategoryShop({
           ) : filteredProducts.length > 0 ? (
             /* Standard Grid / List output */
             viewMode === 'grid' ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 animate-fadeIn">
-                {filteredProducts.map((p) => {
-                  const isWish = wishlistIds.includes(p.id);
-                  return (
-                    <ProductCard
-                      key={p.id}
-                      product={p}
-                      isWish={isWish}
-                      onNavigateToProduct={onNavigateToProduct}
-                      onAddToCart={onAddToCart}
-                      onAddToWishlist={onAddToWishlist}
-                    />
-                  );
-                })}
-              </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 animate-fadeIn">
+  {visibleProducts.map((p) => {
+    const isWish = wishlistIds.includes(p.id);
+
+    return (
+      <ProductCard
+        key={p.id}
+        product={p}
+        isWish={isWish}
+        onNavigateToProduct={onNavigateToProduct}
+        onAddToCart={onAddToCart}
+        onAddToWishlist={onAddToWishlist}
+      />
+    );
+  })}
+</div>
             ) : (
               /* Upgraded list layout option */
               <div className="space-y-4 animate-fadeIn">
-                {filteredProducts.map((p) => {
+                {visibleProducts.map((p, index) => {
                   const isWish = wishlistIds.includes(p.id);
                   const hasDiscount = p.discountPercent && p.discountPercent > 0;
                   const originalPrice = p.originalPrice || (hasDiscount ? Math.round(p.price / (1 - (p.discountPercent || 0) / 100)) : undefined);

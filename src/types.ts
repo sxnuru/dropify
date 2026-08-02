@@ -38,6 +38,8 @@ export interface Product {
   reviews: Review[];
   features?: string[];
   estimatedDelivery?: string;
+  tags?: string[];
+  isActive?: boolean;
 }
 
 export interface CartItem {
@@ -50,7 +52,7 @@ export interface CartItem {
 
 export interface BlogPost {
   id: string;
-  title: string;
+  name: string;
   category: string;
   author: string;
   date: string;
@@ -73,7 +75,12 @@ export interface Order {
   shippingAddress: Address;
   paymentMethod: string;
   date: string;
-  events: { title: string; description: string; time: string; done: boolean }[];
+  events: { name: string; description: string; time: string; done: boolean }[];
+  customerName?: string;
+  customerEmail?: string;
+  paymentStatus?: 'Pending' | 'Paid' | 'Refunded' | 'Cancelled';
+  fulfillmentStatus?: 'Pending' | 'Processing' | 'Shipped' | 'Delivered' | 'Cancelled';
+  userId?: string;
 }
 
 export interface Address {
@@ -116,7 +123,7 @@ export interface SitemapNode {
 // User Flow Step
 export interface UserFlowStep {
   id: string;
-  title: string;
+  name: string;
   actor: 'User' | 'System' | 'AI Assistant' | 'Seller';
   description: string;
   nextStepIds: string[];
@@ -129,4 +136,6 @@ export interface UserProfile {
   status?: string;
   memberSince?: string;
   loyaltyPoints?: number;
+  role?: string;
+  uid?: string;
 }

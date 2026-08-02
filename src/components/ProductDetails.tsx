@@ -11,22 +11,28 @@ import {
   Heart, Shield, Rotate3d, Plus, Star, ShoppingBag, Eye,
   CheckCircle, Truck, RefreshCw, Award, ArrowRight, Sparkles, MessageSquarePlus
 } from 'lucide-react';
-
 interface ProductDetailsProps {
   product: Product;
+  productsList: Product[];
   onAddToCart: (p: Product, color: string, size: string) => void;
   onAddToWishlist: (p: Product) => void;
   onNavigateToProduct: (id: string) => void;
   isInWishlist: boolean;
   onBackToShop?: () => void;
+  recentlyViewed?: Product[];
 }
 
 export default function ProductDetails({ 
-  product, onAddToCart, onAddToWishlist, onNavigateToProduct, isInWishlist, onBackToShop 
+  product, productsList, onAddToCart, onAddToWishlist, onNavigateToProduct, isInWishlist, onBackToShop, recentlyViewed 
 }: ProductDetailsProps) {
-  const [activeImg, setActiveImg] = useState(product.images[0]);
-  const [selectedColor, setSelectedColor] = useState(product.colors[0]);
-  const [selectedSize, setSelectedSize] = useState(product.sizes[0]);
+  const safeImages =
+    Array.isArray(product.images) && product.images.length
+      ? product.images
+      : ['https://placehold.co/500x500?text=No+Image'];
+
+  const [activeImg, setActiveImg] = useState(safeImages[0]);
+  const [selectedColor, setSelectedColor] = useState(product.colors?.[0] || 'Default');
+  const [selectedSize, setSelectedSize] = useState(product.sizes?.[0] || 'Default');
   
   // Hover Magnifier Zoom States
   const [zoomStyle, setZoomStyle] = useState<React.CSSProperties>({ display: 'none' });
@@ -38,7 +44,7 @@ export default function ProductDetails({
   const [startX, setStartX] = useState(0);
 
   // Dynamic reviews state to allow writing real-time appraisals
-  const [reviewsList, setReviewsList] = useState<Review[]>(product.reviews);
+  const [reviewsList, setReviewsList] = useState<Review[]>(product.reviews || []);
   const [newAuthor, setNewAuthor] = useState('');
   const [newRating, setNewRating] = useState(5);
   const [newComment, setNewComment] = useState('');
@@ -50,10 +56,10 @@ export default function ProductDetails({
 
   // Sync state if product changes
   useEffect(() => {
-    setActiveImg(product.images[0]);
-    setSelectedColor(product.colors[0]);
-    setSelectedSize(product.sizes[0]);
-    setReviewsList(product.reviews);
+    setActiveImg(safeImages[0]);
+    setSelectedColor(product.colors?.[0] || 'Default');
+    setSelectedSize(product.sizes?.[0] || 'Default');
+    setReviewsList(product.reviews || []);
     setIs360Mode(false);
   }, [product]);
 
@@ -99,7 +105,9 @@ export default function ProductDetails({
 
   const triggerAddBundleToCart = () => {
     onAddToCart(product, selectedColor, selectedSize);
-    onAddToCart(bundleCompanion, bundleCompanion.colors[0], bundleCompanion.sizes[0]);
+    if (bundleCompanion) {
+      onAddToCart(bundleCompanion, bundleCompanion?.colors?.[0] || 'Default', bundleCompanion?.sizes?.[0] || 'Default');
+    }
     setIsAddedToCart(true);
     setTimeout(() => setIsAddedToCart(false), 3000);
   };
@@ -129,8 +137,10 @@ export default function ProductDetails({
   // Recommendations: Customers Also Viewed (3 similar items based on category)
   const customersAlsoViewed = PRODUCTS.filter(p => p.category === product.category && p.id !== product.id).slice(0, 3);
   
-  // Recommendations: Recently Viewed pieces (3 different items)
-  const recentlyViewed = PRODUCTS.filter(p => p.id !== product.id && p.category !== product.category).slice(0, 3);
+  // Recommendations: Recently Viewed pieces (3 different items, falling back to recommendations if prop is empty/undefined)
+  const resolvedRecentlyViewed = (recentlyViewed && recentlyViewed.length > 0)
+    ? recentlyViewed
+    : PRODUCTS.filter(p => p.id !== product.id && p.category !== product.category).slice(0, 3);
 
   return (
     <div id={`product-details-${product.id}`} className="space-y-6 animate-fadeIn relative pb-20 lg:pb-0">
@@ -161,6 +171,10 @@ export default function ProductDetails({
                   alt={product.name} 
                   className="w-full h-full object-cover transition-all duration-300 group-hover:opacity-0"
                   referrerPolicy="no-referrer"
+                  onError={(e) => {
+                    console.error(`Failed to load product details activeImg for "${product.name}" (${product.id}): ${e.currentTarget.src}`);
+                    e.currentTarget.src = "https://placehold.co/500x500?text=No+Image";
+                  }}
                 />
                 {/* Simulated Lens Zoom Element */}
                 <div 
@@ -185,7 +199,15 @@ export default function ProductDetails({
                   className="w-56 h-56 bg-white border border-slate-200/60 rounded-3xl flex items-center justify-center shadow-lg transition-transform"
                   style={{ transform: `rotateY(${rotationAngle}deg)` }}
                 >
-                  <img src={product.images[0]} alt="" className="w-44 h-44 object-contain p-2" />
+                  <img 
+                    src={safeImages[0]} 
+                    alt="" 
+                    className="w-44 h-44 object-contain p-2" 
+                    onError={(e) => {
+                      console.error(`Failed to load 360 viewer image for "${product.name}" (${product.id}): ${e.currentTarget.src}`);
+                      e.currentTarget.src = "https://placehold.co/500x500?text=No+Image";
+                    }}
+                  />
                 </div>
                 <div className="text-center mt-6 space-y-1 relative z-10 pointer-events-none">
                   <span className="font-mono text-[10px] text-blue-600 font-bold uppercase tracking-widest block">INTERACTIVE 360 VIEWER</span>
@@ -208,7 +230,7 @@ export default function ProductDetails({
           {/* Thumbnail Strip */}
           {!is360Mode && (
             <div className="grid grid-cols-3 gap-3">
-              {product.images.map((img, index) => (
+              {safeImages.map((img, index) => (
                 <button
                   id={`thumb-btn-${index}`}
                   key={index}
@@ -219,7 +241,15 @@ export default function ProductDetails({
                       : 'border-slate-200 hover:border-slate-400 bg-slate-50'
                   }`}
                 >
-                  <img src={img} alt="" className="w-full h-full object-cover" />
+                  <img 
+                    src={img} 
+                    alt="" 
+                    className="w-full h-full object-cover" 
+                    onError={(e) => {
+                      console.error(`Failed to load product thumbnail image for "${product.name}" (${product.id}): ${e.currentTarget.src}`);
+                      e.currentTarget.src = "https://placehold.co/500x500?text=No+Image";
+                    }}
+                  />
                 </button>
               ))}
             </div>
@@ -267,7 +297,7 @@ export default function ProductDetails({
             <div>
               <span className="block text-[10px] font-mono text-slate-400 uppercase tracking-wider mb-2 font-bold">Select Aesthetic tone: {selectedColor}</span>
               <div className="flex gap-2">
-                {product.colors.map((color) => (
+                {(product.colors || []).map((color) => (
                   <button
                     id={`color-btn-${color}`}
                     key={color}
@@ -288,14 +318,14 @@ export default function ProductDetails({
             <div>
               <span className="block text-[10px] font-mono text-slate-400 uppercase tracking-wider mb-2 font-bold">Select Dimension / Size: {selectedSize}</span>
               <div className="flex gap-2">
-                {product.sizes.map((size) => (
+                {(product.sizes || []).map((size) => (
                   <button
                     id={`size-btn-${size}`}
                     key={size}
                     onClick={() => setSelectedSize(size)}
                     className={`px-3.5 py-1.5 rounded-xl text-xs font-mono font-bold border transition-all cursor-pointer ${
                       selectedSize === size
-                        ? 'border-blue-600 bg-blue-50 text-blue-800 ring-2 ring-blue-50'
+                        ? 'border-blue-650 bg-blue-50 text-blue-800 ring-2 ring-blue-50'
                         : 'border-slate-200 hover:border-slate-400 text-slate-600 bg-white'
                     }`}
                   >
@@ -358,7 +388,7 @@ export default function ProductDetails({
           <h3 className="font-sans font-bold text-slate-900 text-lg mb-3">Product Narrative & Inspiration</h3>
           <p className="text-slate-500 text-xs leading-relaxed font-sans">{product.productStory || "Our catalog story investigates design inspirations, handcrafting techniques, and sustainable sourcing methodologies."}</p>
           
-          {product.features && (
+          {Array.isArray(product.features) && product.features.length > 0 ? (
             <div className="mt-6 space-y-2">
               <span className="block text-[10px] font-mono text-slate-400 uppercase tracking-wider font-bold">Featured Attributes</span>
               <ul className="space-y-2 text-xs font-sans text-slate-600 list-disc pl-4 leading-normal">
@@ -367,23 +397,34 @@ export default function ProductDetails({
                 ))}
               </ul>
             </div>
+          ) : (
+            <div className="mt-6 space-y-2">
+              <span className="block text-[10px] font-mono text-slate-400 uppercase tracking-wider font-bold">Featured Attributes</span>
+              <p className="text-slate-400 text-xs italic font-sans">No additional features listed.</p>
+            </div>
           )}
         </div>
 
         <div>
           <h3 className="font-sans font-bold text-slate-900 text-lg mb-3">Specifications Matrix</h3>
-          <div className="border border-slate-100 rounded-2xl overflow-hidden shadow-sm bg-white">
-            <table className="w-full text-left font-sans text-xs border-collapse">
-              <tbody className="divide-y divide-slate-50 text-slate-750 text-slate-700">
-                {Object.entries(product.specs).map(([key, val], idx) => (
-                  <tr id={`spec-row-${idx}`} key={idx} className="hover:bg-slate-50/50">
-                    <td className="p-3.5 font-bold text-slate-900 font-mono text-[9px] uppercase w-1/3 tracking-wider bg-slate-50/30">{key}</td>
-                    <td className="p-3.5 text-slate-500">{val}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          {product.specs && Object.keys(product.specs).length > 0 ? (
+            <div className="border border-slate-100 rounded-2xl overflow-hidden shadow-sm bg-white">
+              <table className="w-full text-left font-sans text-xs border-collapse">
+                <tbody className="divide-y divide-slate-50 text-slate-750 text-slate-700">
+                  {Object.entries(product.specs).map(([key, val], idx) => (
+                    <tr id={`spec-row-${idx}`} key={idx} className="hover:bg-slate-50/50">
+                      <td className="p-3.5 font-bold text-slate-900 font-mono text-[9px] uppercase w-1/3 tracking-wider bg-slate-50/30">{key}</td>
+                      <td className="p-3.5 text-slate-500">{val}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="border border-slate-100 rounded-2xl p-4 bg-white shadow-sm text-center">
+              <p className="text-slate-400 text-xs italic font-sans">No specifications available</p>
+            </div>
+          )}
         </div>
       </div>
 
@@ -398,7 +439,15 @@ export default function ProductDetails({
           <div className="flex items-center gap-4">
             {/* Main Item */}
             <div className="flex items-center gap-3">
-              <img src={product.images[0]} alt="" className="w-16 h-16 object-cover rounded-xl border border-slate-200 bg-white" />
+              <img 
+                src={safeImages[0]} 
+                alt="" 
+                className="w-16 h-16 object-cover rounded-xl border border-slate-200 bg-white" 
+                onError={(e) => {
+                  console.error(`Failed to load bundle main image for "${product.name}" (${product.id}): ${e.currentTarget.src}`);
+                  e.currentTarget.src = "https://placehold.co/500x500?text=No+Image";
+                }}
+              />
               <div>
                 <span className="font-bold text-slate-900 block text-xs">{product.name}</span>
                 <span className="font-mono text-[11px] text-slate-500">{formatPrice(product.price)}</span>
@@ -409,10 +458,18 @@ export default function ProductDetails({
 
             {/* Companion Item */}
             <div className="flex items-center gap-3">
-              <img src={bundleCompanion.images[0]} alt="" className="w-16 h-16 object-cover rounded-xl border border-slate-200 bg-white" />
+              <img 
+                src={(Array.isArray(bundleCompanion?.images) && bundleCompanion.images[0]) || 'https://placehold.co/500x500?text=No+Image'} 
+                alt="" 
+                className="w-16 h-16 object-cover rounded-xl border border-slate-200 bg-white" 
+                onError={(e) => {
+                  console.error(`Failed to load bundle companion image for "${bundleCompanion?.name || 'Companion'}" (${bundleCompanion?.id || 'unknown'}): ${e.currentTarget.src}`);
+                  e.currentTarget.src = "https://placehold.co/500x500?text=No+Image";
+                }}
+              />
               <div>
-                <span className="font-bold text-slate-900 block text-xs">{bundleCompanion.name}</span>
-                <span className="font-mono text-[11px] text-slate-500">{formatPrice(bundleCompanion.price)}</span>
+                <span className="font-bold text-slate-900 block text-xs">{bundleCompanion?.name || "Complementary Item"}</span>
+                <span className="font-mono text-[11px] text-slate-500">{formatPrice(bundleCompanion?.price || 0)}</span>
               </div>
             </div>
           </div>
@@ -421,7 +478,7 @@ export default function ProductDetails({
             <div className="font-sans text-xs">
               <span className="text-slate-400">Coordinated Bundle Price (10% off): </span>
               <span className="font-mono font-bold text-slate-900 text-base ml-1">
-                {formatPrice(Math.round((product.price + bundleCompanion.price) * 0.9))}
+                {formatPrice(Math.round((product.price + (bundleCompanion?.price || 0)) * 0.9))}
               </span>
             </div>
             <button
@@ -451,7 +508,15 @@ export default function ProductDetails({
             >
               <div className="space-y-3">
                 <div className="relative aspect-square rounded-2xl overflow-hidden bg-slate-50">
-                  <img src={item.images[0]} alt="" className="w-full h-full object-cover transition-transform group-hover:scale-102" />
+                  <img 
+                    src={(Array.isArray(item?.images) && item.images[0]) || 'https://placehold.co/500x500?text=No+Image'} 
+                    alt="" 
+                    className="w-full h-full object-cover transition-transform group-hover:scale-102" 
+                    onError={(e) => {
+                      console.error(`Failed to load related product image for "${item.name}" (${item.id}): ${e.currentTarget.src}`);
+                      e.currentTarget.src = "https://placehold.co/500x500?text=No+Image";
+                    }}
+                  />
                 </div>
                 <div className="text-xs space-y-1">
                   <div className="flex justify-between items-center text-[10px] font-mono text-slate-400">
@@ -474,7 +539,7 @@ export default function ProductDetails({
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {recentlyViewed.map((item) => (
+          {resolvedRecentlyViewed.map((item) => (
             <div 
               key={item.id}
               onClick={() => onNavigateToProduct(item.id)}
@@ -482,7 +547,15 @@ export default function ProductDetails({
             >
               <div className="space-y-3">
                 <div className="relative aspect-square rounded-2xl overflow-hidden bg-slate-50">
-                  <img src={item.images[0]} alt="" className="w-full h-full object-cover transition-transform group-hover:scale-102" />
+                  <img 
+                    src={(Array.isArray(item?.images) && item.images[0]) || 'https://placehold.co/500x500?text=No+Image'} 
+                    alt="" 
+                    className="w-full h-full object-cover transition-transform group-hover:scale-102" 
+                    onError={(e) => {
+                      console.error(`Failed to load recently viewed image for "${item.name}" (${item.id}): ${e.currentTarget.src}`);
+                      e.currentTarget.src = "https://placehold.co/500x500?text=No+Image";
+                    }}
+                  />
                 </div>
                 <div className="text-xs space-y-1">
                   <div className="flex justify-between items-center text-[10px] font-mono text-slate-400">
@@ -518,12 +591,12 @@ export default function ProductDetails({
             <div id={`review-card-${r.id}`} key={r.id} className="bg-white border border-slate-100 p-6 rounded-3xl shadow-sm space-y-4 hover:shadow-md transition-shadow">
               <div className="flex justify-between items-start">
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center font-sans text-xs font-bold text-slate-750 text-slate-800">
-                    {r.username.charAt(0).toUpperCase()}
+                  <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 font-mono font-bold flex items-center justify-center text-xs">
+                    {(r.username || 'Anonymous').charAt(0).toUpperCase()}
                   </div>
                   <div>
-                    <span className="font-sans font-extrabold text-slate-900 text-xs block">{r.username}</span>
-                    <span className="font-mono text-[9px] text-slate-400">{r.date}</span>
+                    <span className="font-sans font-extrabold text-slate-900 text-xs block">{r.username || 'Anonymous'}</span>
+                    <span className="font-mono text-[9px] text-slate-400">{r.date || 'Today'}</span>
                   </div>
                 </div>
                 <div className="flex gap-0.5 text-amber-400">

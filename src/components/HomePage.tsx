@@ -5,7 +5,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { Product } from '../types';
-import { PRODUCTS } from '../data';
 import { 
   Sparkles, Star, ShoppingBag, Eye, Heart, 
   ChevronRight, ArrowRight, Clock, Mail, Instagram,
@@ -41,15 +40,15 @@ const VISUAL_CATEGORIES = [
     height: 'h-[360px]'
   },
   { 
-    name: 'Beauty & Personal Care', 
-    sub: 'Organic botanical skincare & luxury grooming', 
-    img: 'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?auto=format&fit=crop&q=80&w=600', 
-    tag: '03 / SELF CARE',
+    name: 'Sports & Outdoors', 
+    sub: 'High-performance athletic gear & outdoor accessories', 
+    img: 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?auto=format&fit=crop&q=80&w=600', 
+    tag: '03 / MOVEMENT',
     span: 'col-span-1 sm:col-span-1 xl:col-span-4',
     height: 'h-[380px]'
   },
   { 
-    name: 'Home & Living', 
+    name: 'Home & Garden', 
     sub: 'Minimalist furniture, curated decor & soft textiles', 
     img: 'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fit=crop&q=80&w=600', 
     tag: '04 / DWELL',
@@ -57,68 +56,36 @@ const VISUAL_CATEGORIES = [
     height: 'h-[380px]'
   },
   { 
-    name: 'Kitchen & Dining', 
-    sub: 'Artisan tableware, premium cookware & coffee crafts', 
-    img: 'https://images.unsplash.com/photo-1610701596007-11502861dcfa?auto=format&fit=crop&q=80&w=600', 
-    tag: '05 / FEAST',
+    name: 'Toys & Games', 
+    sub: 'Retro play, board games & action figures', 
+    img: 'https://images.unsplash.com/photo-1596461404969-9ae70f2830c1?auto=format&fit=crop&q=80&w=600', 
+    tag: '05 / PLAY',
     span: 'col-span-1 sm:col-span-1 xl:col-span-4',
     height: 'h-[380px]'
   },
   { 
-    name: 'Sports & Fitness', 
-    sub: 'High-performance athletic gear & studio equipment', 
-    img: 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?auto=format&fit=crop&q=80&w=600', 
-    tag: '06 / MOVEMENT',
+    name: 'Health & Personal Care', 
+    sub: 'Daily wellness, first aid & essential self care', 
+    img: 'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?auto=format&fit=crop&q=80&w=600', 
+    tag: '06 / WELLNESS',
     span: 'col-span-1 sm:col-span-1 xl:col-span-4',
     height: 'h-[320px]'
   },
   { 
-    name: 'Books & Stationery', 
-    sub: 'Fine journals, writing instruments & premium reads', 
-    img: 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&q=80&w=600', 
-    tag: '07 / MIND',
+    name: 'Food & Grocery', 
+    sub: 'Premium pantry, organic snacks & gourmet selections', 
+    img: 'https://images.unsplash.com/photo-1610701596007-11502861dcfa?auto=format&fit=crop&q=80&w=600', 
+    tag: '07 / PANTRY',
     span: 'col-span-1 sm:col-span-2 xl:col-span-8',
     height: 'h-[320px]'
   },
   { 
-    name: 'Pet Supplies', 
-    sub: 'Premium nutrition, luxury leather collars & beds', 
-    img: 'https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?auto=format&fit=crop&q=80&w=600', 
-    tag: '08 / COMPANION',
-    span: 'col-span-1 sm:col-span-1 xl:col-span-4',
-    height: 'h-[360px]'
-  },
-  { 
-    name: 'Automotive', 
-    sub: 'Sleek driving tools, interior care & hardware', 
-    img: 'https://images.unsplash.com/photo-1563720223185-11003d516935?auto=format&fit=crop&q=80&w=600', 
-    tag: '09 / MOTIVE',
-    span: 'col-span-1 sm:col-span-1 xl:col-span-4',
-    height: 'h-[360px]'
-  },
-  { 
-    name: 'Accessories', 
-    sub: 'Curated watches, fine leather goods & eyewear', 
+    name: 'Other', 
+    sub: 'Uncategorized boutique items & unique finds', 
     img: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&q=80&w=600', 
-    tag: '10 / STYLE',
+    tag: '08 / SPECIAL',
     span: 'col-span-1 sm:col-span-1 xl:col-span-4',
     height: 'h-[360px]'
-  },
-  { 
-    name: 'Baby & Kids', 
-    sub: 'Sustainable wooden toys, apparel & soft blankets', 
-    img: 'https://images.unsplash.com/photo-1596461404969-9ae70f2830c1?auto=format&fit=crop&q=80&w=600', 
-    tag: '11 / FAMILY',
-    span: 'col-span-1 sm:col-span-1 xl:col-span-4',
-    height: 'h-[340px]'
-  },
-  { 
-    name: 'Gaming', 
-    sub: 'Mechanical keycaps, high-performance mice & consoles', 
-    img: 'https://images.unsplash.com/photo-1603481588273-2f908a9a7a1b?auto=format&fit=crop&q=80&w=600', 
-    tag: '12 / INTERACTIVE',
-    span: 'col-span-1 sm:col-span-2 xl:col-span-8',
-    height: 'h-[340px]'
   }
 ];
 
@@ -146,6 +113,7 @@ export default function HomePage({
 
   // Filter lists for specials
   const flashDeals = products.filter(p => p.isFlashDeal);
+  const displayFlashDeals = [...flashDeals].reverse().slice(0, 8);
   const featured = products.filter(p => p.isFeatured);
   const newArrivals = products.filter(p => p.isNew);
   const bestSellers = products.filter(p => p.rating >= 4.7).slice(0, 4);
@@ -165,17 +133,13 @@ export default function HomePage({
 
   const quickCategories = [
     { name: 'Fashion', icon: <Shirt className="w-3.5 h-3.5" />, color: 'hover:bg-amber-50 hover:text-amber-700 hover:border-amber-200' },
+    { name: 'Toys & Games', icon: <Gamepad className="w-3.5 h-3.5" />, color: 'hover:bg-cyan-50 hover:text-cyan-700 hover:border-cyan-200' },
+    { name: 'Sports & Outdoors', icon: <Dumbbell className="w-3.5 h-3.5" />, color: 'hover:bg-red-50 hover:text-red-700 hover:border-red-200' },
+    { name: 'Health & Personal Care', icon: <Heart className="w-3.5 h-3.5" />, color: 'hover:bg-purple-50 hover:text-purple-700 hover:border-purple-200' },
+    { name: 'Home & Garden', icon: <Sofa className="w-3.5 h-3.5" />, color: 'hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200' },
     { name: 'Electronics', icon: <Laptop className="w-3.5 h-3.5" />, color: 'hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200' },
-    { name: 'Beauty & Personal Care', icon: <Sparkles className="w-3.5 h-3.5" />, color: 'hover:bg-purple-50 hover:text-purple-700 hover:border-purple-200' },
-    { name: 'Home & Living', icon: <Sofa className="w-3.5 h-3.5" />, color: 'hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200' },
-    { name: 'Kitchen & Dining', icon: <Coffee className="w-3.5 h-3.5" />, color: 'hover:bg-orange-50 hover:text-orange-700 hover:border-orange-200' },
-    { name: 'Sports & Fitness', icon: <Dumbbell className="w-3.5 h-3.5" />, color: 'hover:bg-red-50 hover:text-red-700 hover:border-red-200' },
-    { name: 'Books & Stationery', icon: <BookOpen className="w-3.5 h-3.5" />, color: 'hover:bg-teal-50 hover:text-teal-700 hover:border-teal-200' },
-    { name: 'Pet Supplies', icon: <Dog className="w-3.5 h-3.5" />, color: 'hover:bg-amber-100 hover:text-amber-800 hover:border-amber-300' },
-    { name: 'Automotive', icon: <Car className="w-3.5 h-3.5" />, color: 'hover:bg-slate-100 hover:text-slate-800 hover:border-slate-300' },
-    { name: 'Accessories', icon: <Tag className="w-3.5 h-3.5" />, color: 'hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200' },
-    { name: 'Baby & Kids', icon: <Gift className="w-3.5 h-3.5" />, color: 'hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-200' },
-    { name: 'Gaming', icon: <Gamepad className="w-3.5 h-3.5" />, color: 'hover:bg-cyan-50 hover:text-cyan-700 hover:border-cyan-200' }
+    { name: 'Food & Grocery', icon: <Coffee className="w-3.5 h-3.5" />, color: 'hover:bg-orange-50 hover:text-orange-700 hover:border-orange-200' },
+    { name: 'Other', icon: <Tag className="w-3.5 h-3.5" />, color: 'hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200' }
   ];
 
   const handleExploreCategories = () => {
@@ -448,11 +412,21 @@ export default function HomePage({
                   </div>
                 ))}
               </div>
+
+              {flashDeals.length > 8 && (
+                <button
+                  id="view-all-drops-btn"
+                  onClick={() => onNavigateToShop()}
+                  className="mt-4 px-6 py-2.5 bg-white text-slate-900 font-sans text-xs font-bold rounded-xl hover:bg-blue-600 hover:text-white transition-all cursor-pointer uppercase tracking-wider block w-full text-center"
+                >
+                  View All Limited Drops
+                </button>
+              )}
             </div>
 
             {/* Product Spotlights */}
             <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {flashDeals.map((p, idx) => (
+              {displayFlashDeals.map((p, idx) => (
                 <div id={`flash-deal-card-${p.id}`} key={idx} className="bg-slate-900/40 border border-slate-800/60 rounded-2xl p-4 flex gap-4 items-center group relative overflow-hidden">
                   <img src={p.images[0]} alt="" className="w-20 h-20 object-cover rounded-xl border border-slate-800 bg-white" />
                   <div className="space-y-1 text-xs">
@@ -638,19 +612,19 @@ export default function HomePage({
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {[
             {
-              title: "The Silent Workspace",
+              name: "The Silent Workspace",
               sub: "Acoustic devices & tactile keyboards",
               img: "https://images.unsplash.com/photo-1513519245088-0e12902e5a38?auto=format&fit=crop&q=80&w=600",
               category: "Electronics"
             },
             {
-              title: "Modern Living Archive",
+              name: "Modern Living Archive",
               sub: "Brutalist ceramic art & spatial accessories",
               img: "https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fit=crop&q=80&w=600",
               category: "Home Decor"
             },
             {
-              title: "Sartorial Simplicity",
+              name: "Sartorial Simplicity",
               sub: "Luxury capsule tailoring & organic cotton items",
               img: "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&q=80&w=600",
               category: "Fashion"
@@ -662,10 +636,10 @@ export default function HomePage({
               className="h-80 rounded-3xl overflow-hidden relative group cursor-pointer border border-slate-200/50 shadow-sm transition-all duration-500 hover:-translate-y-1 hover:shadow-lg"
             >
               <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent group-hover:via-slate-950/30 transition-all z-10" />
-              <img src={col.img} alt={col.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+              <img src={col.img} alt={col.name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
               <div className="absolute bottom-6 left-6 right-6 z-20 space-y-1 text-left text-white">
                 <span className="font-mono text-[9px] text-blue-300 font-bold uppercase tracking-widest block">COLLECTION {idx + 1}</span>
-                <h3 className="font-sans text-lg font-extrabold tracking-tight leading-tight">{col.title}</h3>
+                <h3 className="font-sans text-lg font-extrabold tracking-tight leading-tight">{col.name}</h3>
                 <p className="text-xs text-slate-200/90 leading-tight font-medium">{col.sub}</p>
               </div>
             </div>
@@ -710,22 +684,22 @@ export default function HomePage({
             {[
               {
                 icon: <Truck className="w-6 h-6 text-blue-600" />,
-                title: "Fast Nationwide Delivery",
+                name: "Fast Nationwide Delivery",
                 desc: "Express shipping directly to your doorstep in United Kingdom with real-time transit tracking and zero delay."
               },
               {
                 icon: <Lock className="w-6 h-6 text-blue-600" />,
-                title: "Secure Payments",
+                name: "Secure Payments",
                 desc: "Fully encrypted transaction channels including Cash on Delivery (COD) and secured card processing."
               },
               {
                 icon: <RotateCcw className="w-6 h-6 text-blue-600" />,
-                title: "Easy Returns",
+                name: "Easy Returns",
                 desc: "Hassle-free 30-day complimentary return collection service if you are not fully satisfied."
               },
               {
                 icon: <ShieldCheck className="w-6 h-6 text-blue-600" />,
-                title: "Quality Assured Products",
+                name: "Quality Assured Products",
                 desc: "100% authentic inventory sourced directly from trusted global brands and verified partners."
               }
             ].map((feature, idx) => (
@@ -737,7 +711,7 @@ export default function HomePage({
                   {feature.icon}
                 </div>
                 <div className="space-y-1.5">
-                  <h4 className="font-sans font-bold text-sm text-slate-900 tracking-tight">{feature.title}</h4>
+                  <h4 className="font-sans font-bold text-sm text-slate-900 tracking-tight">{feature.name}</h4>
                   <p className="text-slate-500 text-xs leading-relaxed">{feature.desc}</p>
                 </div>
               </div>

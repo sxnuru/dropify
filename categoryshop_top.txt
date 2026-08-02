@@ -1,0 +1,258 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import { useState, useEffect } from 'react';
+import { Product } from '../types';
+import { 
+  SlidersHorizontal, AlertCircle, Grid, List, RotateCcw, Star,
+  Truck, ShieldCheck, ShoppingCart, Heart, Eye
+} from 'lucide-react';
+import ProductCard from './ProductCard';
+import { formatPrice } from '../utils/currency';
+
+interface CategoryShopProps {
+  onNavigateToProduct: (id: string) => void;
+  onAddToCart: (p: Product, color: string, size: string) => void;
+  onAddToWishlist: (p: Product) => void;
+  wishlistIds: string[];
+  initialCategoryFilter?: string;
+  initialBrandFilter?: string;
+  productsList: Product[];
+  onBackToHome?: () => void;
+}
+
+export function mapMegaCategoryToCatalog(megaCategory: string): string {
+  const mapping: Record<string, string> = {
+    'Fashion': 'Fashion',
+    'Electronics': 'Electronics',
+    'Home & Living': 'Home Decor',
+    'Home Decor': 'Home Decor',
+    'Kitchen & Dining': 'Kitchen & Dining',
+    'Beauty & Personal Care': 'Beauty',
+    'Beauty': 'Beauty',
+    'Health & Wellness': 'Health & Wellness',
+    'Baby & Kids': 'Baby & Kids',
+    'Toys & Games': 'Toys & Games',
+    'Sports & Fitness': 'Gym Wear',
+    'Gym Wear': 'Gym Wear',
+    'Automotive': 'Automotive',
+    'Books & Stationery': 'Books',
+    'Books': 'Books',
+    'Pet Supplies': 'Pet Supplies',
+    'Accessories': 'Accessories',
+    'Gaming': 'Collectibles',
+    'Gifts': 'Gifts',
+    'Seasonal Deals': 'Seasonal Deals'
+  };
+  return mapping[megaCategory] || megaCategory;
+}
+
+export default function CategoryShop({ 
+  onNavigateToProduct, onAddToCart, onAddToWishlist, wishlistIds, 
+  initialCategoryFilter = 'All', initialBrandFilter = 'All', productsList, onBackToHome
+}: CategoryShopProps) {
+  
+  // Filtering & Sorting States
+  const [selectedCategory, setSelectedCategory] = useState(initialCategoryFilter);
+  const [selectedBrands, setSelectedBrands] = useState<string[]>(
+    initialBrandFilter && initialBrandFilter !== 'All' ? [initialBrandFilter] : []
+  );
+  const [selectedPriceRanges, setSelectedPriceRanges] = useState<string[]>([]);
+  const [minRating, setMinRating] = useState<number>(0);
+  const [inStockOnly, setInStockOnly] = useState<boolean>(false);
+  const [discountOnly, setDiscountOnly] = useState<boolean>(false);
+  const [selectedColor, setSelectedColor] = useState<string>('All');
+  const [selectedSize, setSelectedSize] = useState<string>('All');
+  const [selectedCondition, setSelectedCondition] = useState<string>('All');
+  
+  const [sortBy, setSortBy] = useState<string>('rating');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
+
+  // Sync props when they change externally from header navigation
+  useEffect(() => {
+    setSelectedCategory(initialCategoryFilter);
+    triggerLoading();
+  }, [initialCategoryFilter]);
+
+  useEffect(() => {
+    if (initialBrandFilter && initialBrandFilter !== 'All') {
+      setSelectedBrands([initialBrandFilter]);
+    } else {
+      setSelectedBrands([]);
+    }
+    triggerLoading();
+  }, [initialBrandFilter]);
+
+  // Simulate premium skeleton loading on filter updates
+  const triggerLoading = () => {
+    setIsLoading(true);
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 350);
+    return () => clearTimeout(timer);
+  };
+
+  const handleCategoryChange = (cat: string) => {
+    setSelectedCategory(cat);
+    triggerLoading();
+  };
+
+  const handleBrandToggle = (brand: string) => {
+    setSelectedBrands(prev => 
+      prev.includes(brand) 
+        ? prev.filter(b => b !== brand) 
+        : [...prev, brand]
+    );
+    triggerLoading();
+  };
+
+  const handlePriceRangeToggle = (range: string) => {
+    setSelectedPriceRanges(prev => 
+      prev.includes(range) 
+        ? prev.filter(r => r !== range) 
+        : [...prev, range]
+    );
+    triggerLoading();
+  };
+
+  const handleResetFilters = () => {
+    setSelectedBrands([]);
+    setSelectedPriceRanges([]);
+    setMinRating(0);
+    setInStockOnly(false);
+    setDiscountOnly(false);
+    setSelectedColor('All');
+    setSelectedSize('All');
+    setSelectedCondition('All');
+    setSortBy('rating');
+    triggerLoading();
+  };
+
+  // Available Categories in Catalog
+  const categories = [
+    'All', 'Fashion', 'Electronics', 'Home Decor', 'Gym Wear', 'Beauty', 'Collectibles', 'Books',
+    'Kitchen & Dining', 'Health & Wellness', 'Baby & Kids', 'Toys & Games', 'Automotive', 'Pet Supplies', 
+    'Accessories', 'Gifts', 'Seasonal Deals'
+  ];
+  
+  // Available Brands in catalog
+  const brands = Array.from(
+  new Set(
+    productsList
+      .map(p => p.brand)
+      .filter(Boolean)
+  )
+);
+  // Available unique colors & sizes gathered from catalog for high fidelity
+  console.time("COLORS");
+  const uniqueColors = ['All', ...Array.from(new Set(productsList.flatMap(p => p.colors || [])))].slice(0, 8);
+  console.timeEnd("COLORS");
+  console.time("SIZES");
+  const uniqueSizes = ['All', ...Array.from(new Set(productsList.flatMap(p => p.sizes || [])))].slice(0, 6);
+  console.timeEnd("SIZES");
+
+  // Price range options
+  const priceRangeOptions = [
+  { label: "Under £50", value: "0-50" },
+  { label: "£50 - £150", value: "50-150" },
+  { label: "Over £150", value: "150+" },
+];
+
+  // Filtering calculation logic
+  console.time("FILTER");
+  const filteredProducts = productsList.filter((p) => {
+    // 1. Category match with custom mappings for extended list
+    let matchesCategory = false;
+    if (selectedCategory === 'All') {
+      matchesCategory = true;
+    } else if (selectedCategory === 'Seasonal Deals') {
+      matchesCategory = !!p.isFlashDeal || (p.discountPercent !== undefined && p.discountPercent > 0);
+    } else if (selectedCategory === 'Accessories') {
+      matchesCategory = p.category === 'Accessories' || p.subcategory.toLowerCase().includes('gadgets') || p.title || p.name.toLowerCase().includes('headphones') || p.title || p.name.toLowerCase().includes('wallet');
+    } else {
+      const mapped = mapMegaCategoryToCatalog(selectedCategory);
+      matchesCategory = p.category === mapped || p.subcategory === mapped || p.category === selectedCategory || p.subcategory === selectedCategory;
+    }
+    
+    // 2. Multiple Brands match
+    const matchesBrand = selectedBrands.length === 0 || selectedBrands.includes(p.brand);
+    
+    // 3. Multiple Price ranges match
+    let matchesPrice = true;
+    if (selectedPriceRanges.length > 0) {
+      matchesPrice = selectedPriceRanges.some(range => {
+        if (range === 'under_5000') return p.price < 5000;
+        if (range === '5000_20000') return p.price >= 5000 && p.price <= 20000;
+        if (range === 'over_20000') return p.price > 20000;
+        return true;
+      });
+    }
+
+    // 4. Rating threshold match
+    const matchesRating = p.rating >= minRating;
+
+    // 5. Stock status match
+    const matchesStock = !inStockOnly || p.stock > 0;
+
+    // 6. Discount only match
+    const matchesDiscount = !discountOnly || (p.discountPercent !== undefined && p.discountPercent > 0);
+
+    // 7. Color filter match
+    const matchesColor = selectedColor === 'All' || (p.colors && p.colors.some(c => c.toLowerCase() === selectedColor.toLowerCase()));
+
+    // 8. Size filter match
+    const matchesSize = selectedSize === 'All' || (p.sizes && p.sizes.some(s => s.toLowerCase() === selectedSize.toLowerCase()));
+
+    // 9. Condition filter match (simulating premium metadata condition)
+    let matchesCondition = true;
+    if (selectedCondition !== 'All') {
+      // Products over $150 mapped as Premium Renewed for rich variance, others as Pristine New
+      const productCondition = p.price > 150 ? 'Renewed' : 'New';
+      matchesCondition = selectedCondition === productCondition;
+    }
+
+    return matchesCategory && matchesBrand && matchesPrice && matchesRating && matchesStock && matchesDiscount && matchesColor && matchesSize && matchesCondition;
+  }).sort((a, b) => {
+    if (sortBy === 'rating') return b.rating - a.rating;
+    if (sortBy === 'priceAsc') return a.price - b.price;
+    if (sortBy === 'priceDesc') return b.price - a.price;
+    if (sortBy === 'newest') return (b.isNew ? 1 : 0) - (a.isNew ? 1 : 0);
+    if (sortBy === 'popular') return (b.reviewCount * b.rating) - (a.reviewCount * a.rating);
+    if (sortBy === 'discount') return (b.discountPercent || 0) - (a.discountPercent || 0);
+    return 0;
+  });
+  console.timeEnd("FILTER");
+  const PRODUCTS_PER_PAGE = 60;
+
+const visibleProducts = filteredProducts.slice(0, PRODUCTS_PER_PAGE);
+
+  return (
+    <div id="shop-root" className="space-y-6 font-sans">
+      
+      {/* Back Navigation */}
+      <button 
+        onClick={onBackToHome}
+        className="group flex items-center gap-2 text-[10px] font-mono text-slate-500 hover:text-slate-950 font-bold uppercase tracking-wider transition-all cursor-pointer"
+      >
+        <span className="transform group-hover:-translate-x-1 transition-transform duration-200">←</span>
+        <span>Back to Home</span>
+      </button>
+
+      {/* Editorial Header */}
+      <div className="border-b border-slate-100 pb-6 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+        <div>
+          <span className="font-mono text-[10px] text-blue-600 font-bold uppercase tracking-widest block">DREAMSHELF DIRECTORY</span>
+          <h1 className="font-sans text-3xl md:text-5xl font-extrabold text-slate-950 tracking-tight mt-1">
+            {selectedCategory === 'All' ? 'Curated Lifestyle Catalog' : `${selectedCategory}`}
+          </h1>
+          <p className="text-slate-500 text-xs md:text-sm font-sans mt-2 max-w-2xl leading-relaxed">
+            Browse through our luxury selections with multi-faceted filtering. All products include premium authentication, warranty, and complementary carbon-neutral delivery.
+          </p>
+        </div>
+
+        {/* List / Grid Switcher & Sorting Controls */}
+        <div className="flex items-center gap-3 self-start md:self-auto shrink-0">

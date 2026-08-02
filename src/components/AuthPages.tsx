@@ -6,9 +6,17 @@
 import React, { useState } from 'react';
 import { UserProfile } from '../types';
 import { User, Mail, Lock, Phone, ArrowLeft, Shield, Sparkles, AlertCircle } from 'lucide-react';
+import { auth, db } from '../firebase';
+import { 
+  signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword, 
+  updateProfile,
+  sendPasswordResetEmail
+} from 'firebase/auth';
+import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 
 interface AuthPagesProps {
-  onSuccess: (user: UserProfile) => void;
+  onSuccess: () => void;
   onCancel: () => void;
   initialView?: 'login' | 'register' | 'forgot';
 }
@@ -32,7 +40,7 @@ export default function AuthPages({ onSuccess, onCancel, initialView = 'login' }
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val);
   };
 
-  const handleLoginSubmit = (e: React.FormEvent) => {
+  const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setSuccess('');
@@ -55,21 +63,32 @@ export default function AuthPages({ onSuccess, onCancel, initialView = 'login' }
     }
 
     setIsLoading(true);
-    setTimeout(() => {
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const firebaseUser = userCredential.user;
+      
+      console.log("[handleLoginSubmit] Successfully authenticated via Firebase Auth.");
+      console.log("- Firebase UID:", firebaseUser.uid);
+      console.log("- email:", firebaseUser.email || email);
+      setSuccess('Successfully authenticated! Redirecting to home...');
+      setTimeout(() => {
+        setIsLoading(false);
+        onSuccess();
+      }, 800);
+    } catch (err: any) {
       setIsLoading(false);
-  const user: UserProfile = {
-  fullName: fullName || 'DreamShelf Customer',
-  email,
-  phone: phone || '+44 7700 900123',
-  status: 'Platinum Tier',
-  memberSince: 'January 2026',
-  loyaltyPoints: 1250
-};
-      onSuccess(user);
-    }, 1000);
+      console.error(err);
+      if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found') {
+        setError('Incorrect email address or password. Please try again.');
+      } else if (err.code === 'auth/too-many-requests') {
+        setError('This account has been temporarily disabled due to too many failed login attempts. Please try again later.');
+      } else {
+        setError(err.message || 'Authentication error. Please check your credentials.');
+      }
+    }
   };
 
-  const handleRegisterSubmit = (e: React.FormEvent) => {
+  const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setSuccess('');
@@ -104,24 +123,50 @@ export default function AuthPages({ onSuccess, onCancel, initialView = 'login' }
     }
 
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      setSuccess('Account provisioned successfully. Logging you in...');
-      setTimeout(() => {
-        const user: UserProfile = {
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const firebaseUser = userCredential.user;
+      await updateProfile(firebaseUser, { displayName: fullName });
+      
+      // Provision/write customer registration record in Firestore users collection
+      const userDocRef = doc(db, 'users', firebaseUser.uid);
+      const userDocSnap = await getDoc(userDocRef);
+      if (!userDocSnap.exists()) {
+        await setDoc(userDocRef, {
+          uid: firebaseUser.uid,
           fullName: fullName,
           email: email,
-          phone: phone,
-          status: 'Gold Status',
-          memberSince: 'July 2026',
-          loyaltyPoints: 100 // Welcome points!
-        };
-        onSuccess(user);
+          phoneNumber: phone,
+          role: 'customer',
+          createdAt: serverTimestamp()
+        });
+      }
+      
+      setSuccess('Account provisioned successfully. Logging you in...');
+      setTimeout(() => {
+        setIsLoading(false);
+        console.log("[handleRegisterSubmit] Registered new user.");
+        console.log("- Firebase UID:", firebaseUser.uid);
+        console.log("- email:", email);
+        console.log("- Default Firestore role set: customer");
+        onSuccess();
       }, 1000);
-    }, 1200);
+    } catch (err: any) {
+      setIsLoading(false);
+      console.error(err);
+      if (err.code === 'auth/email-already-in-use') {
+        setError('An account with this email address already exists.');
+      } else if (err.code === 'auth/invalid-email') {
+        setError('Please check the structure of your email address.');
+      } else if (err.code === 'auth/weak-password') {
+        setError('The password chosen is too weak. Please use a stronger password.');
+      } else {
+        setError(err.message || 'Error provisioning account. Please try again.');
+      }
+    }
   };
 
-  const handleForgotSubmit = (e: React.FormEvent) => {
+  const handleForgotSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setSuccess('');
@@ -136,11 +181,20 @@ export default function AuthPages({ onSuccess, onCancel, initialView = 'login' }
     }
 
     setIsLoading(true);
-    setTimeout(() => {
+    try {
+      await sendPasswordResetEmail(auth, email);
+      setSuccess('A secure reset link has been dispatched to your email.');
       setIsLoading(false);
-      setSuccess('A temporary credential recovery dispatch has been successfully routed to your email address.');
       setEmail('');
-    }, 1000);
+    } catch (err: any) {
+      setIsLoading(false);
+      console.error(err);
+      if (err.code === 'auth/user-not-found') {
+        setError('No account matches this email directory path.');
+      } else {
+        setError(err.message || 'Error processing reset request.');
+      }
+    }
   };
 
   return (
@@ -225,14 +279,6 @@ export default function AuthPages({ onSuccess, onCancel, initialView = 'login' }
             </button>
           </form>
 
-          {/* Quick Demo Pre-fill helper */}
-          <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 text-[10px] text-slate-500 space-y-1 font-mono">
-            <div className="font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1">
-              <Shield className="w-3 h-3 text-blue-600" /> Demo Account Blueprint
-            </div>
-            <div>Email: <span className="text-slate-800 font-semibold cursor-pointer underline" onClick={() => { setEmail('aria.malik@vanguard.co'); setPassword('password123'); }}>aria.malik@vanguard.co</span></div>
-            <div>Pass: <span className="text-slate-800 font-semibold cursor-pointer underline" onClick={() => { setEmail('aria.malik@vanguard.co'); setPassword('password123'); }}>password123</span></div>
-          </div>
 
           <div className="text-center pt-2">
             <p className="text-slate-400 text-[11px]">
@@ -275,35 +321,57 @@ export default function AuthPages({ onSuccess, onCancel, initialView = 'login' }
           )}
 
           <form onSubmit={handleRegisterSubmit} className="space-y-4">
-            <div className="space-y-1">
-              <label className="block text-[9px] font-mono text-slate-400 uppercase font-bold tracking-wider mb-1">Full Legal Name</label>
+            {/* Full Name Field */}
+            <div className="space-y-1.5">
+              <label className="block text-[9px] font-mono text-slate-400 uppercase font-bold tracking-wider">Full Legal Name</label>
               <div className="relative">
                 <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-    <input 
-  type="text"
-  placeholder="Olivia Thompson"
-  value={fullName}
-  onChange={(e) => { setFullName(e.target.value); setError(''); }}
-/>
-
-<input 
-  type="email"
-  placeholder="olivia.thompson@example.co.uk"
-  value={email}
-  onChange={(e) => { setEmail(e.target.value); setError(''); }}
-/>
-
-<input 
-  type="tel"
-  placeholder="+44 7700 900123"
-  value={phone}
-  onChange={(e) => { setPhone(e.target.value); setError(''); }}
-/>
+                <input 
+                  type="text"
+                  placeholder="e.g. Liam O'Connor"
+                  value={fullName}
+                  onChange={(e) => { setFullName(e.target.value); setError(''); }}
+                  className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-xs focus:bg-white focus:border-blue-500 focus:outline-none transition-all text-slate-800 font-medium"
+                  required
+                />
               </div>
             </div>
 
-            <div className="space-y-1">
-              <label className="block text-[9px] font-mono text-slate-400 uppercase font-bold tracking-wider mb-1">Establish Password</label>
+            {/* Email Field */}
+            <div className="space-y-1.5">
+              <label className="block text-[9px] font-mono text-slate-400 uppercase font-bold tracking-wider">Email Address</label>
+              <div className="relative">
+                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input 
+                  type="email"
+                  placeholder="name@domain.com"
+                  value={email}
+                  onChange={(e) => { setEmail(e.target.value); setError(''); }}
+                  className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-xs focus:bg-white focus:border-blue-500 focus:outline-none transition-all text-slate-800 font-medium"
+                  required
+                />
+              </div>
+            </div>
+
+            {/* Phone Number Field */}
+            <div className="space-y-1.5">
+              <label className="block text-[9px] font-mono text-slate-400 uppercase font-bold tracking-wider">Phone Number</label>
+              <div className="relative">
+                <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input 
+                  type="tel"
+                  placeholder="+44 7700 900123"
+                  value={phone}
+                  onChange={(e) => { setPhone(e.target.value); setError(''); }}
+                  className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-xs focus:bg-white focus:border-blue-500 focus:outline-none transition-all text-slate-800 font-medium"
+                  required
+                />
+              </div>
+            </div>
+
+            {/* Password Field */}
+            <div className="space-y-1.5">
+              <label className="block text-[9px] font-mono text-slate-400 uppercase font-bold tracking-wider">Establish Password</label>
               <div className="relative">
                 <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <input 
@@ -312,14 +380,16 @@ export default function AuthPages({ onSuccess, onCancel, initialView = 'login' }
                   value={password}
                   onChange={(e) => { setPassword(e.target.value); setError(''); }}
                   className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-xs focus:bg-white focus:border-blue-500 focus:outline-none transition-all text-slate-800 font-medium"
+                  required
                 />
               </div>
             </div>
 
-            <div className="space-y-1">
-              <label className="block text-[9px] font-mono text-slate-400 uppercase font-bold tracking-wider mb-1">
-  Phone Number
-</label>
+            {/* Confirm Password Field */}
+            <div className="space-y-1.5">
+              <label className="block text-[9px] font-mono text-slate-400 uppercase font-bold tracking-wider font-bold">
+                Confirm Password
+              </label>
               <div className="relative">
                 <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <input 
@@ -328,6 +398,7 @@ export default function AuthPages({ onSuccess, onCancel, initialView = 'login' }
                   value={confirmPassword}
                   onChange={(e) => { setConfirmPassword(e.target.value); setError(''); }}
                   className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-xs focus:bg-white focus:border-blue-500 focus:outline-none transition-all text-slate-800 font-medium"
+                  required
                 />
               </div>
             </div>

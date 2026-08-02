@@ -233,7 +233,7 @@ export default function DesignSystemViewer() {
                     </span>
                     <div>
                       <span className="font-mono text-[9px] uppercase tracking-widest text-emerald-600 font-bold block">{flow.actor}</span>
-                      <h3 className="font-sans font-bold text-slate-900 text-sm">{flow.title}</h3>
+                      <h3 className="font-sans font-bold text-slate-900 text-sm">{flow.name}</h3>
                     </div>
                   </div>
                   <div className="flex-1 md:border-l md:border-slate-100 md:pl-6 flex flex-col justify-between">

@@ -101,3 +101,20 @@ input:focus, select:focus, textarea:focus {
   box-shadow: 0 10px 30px -10px rgba(15, 23, 42, 0.04);
 }
 
+.premium-transition {
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.premium-card {
+  background-color: var(--color-surface);
+  border: 1px solid #f1f5f9;
+  border-radius: 1.5rem; /* rounded-3xl */
+  box-shadow: 0 10px 30px -10px rgba(15, 23, 42, 0.04);
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.premium-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 40px -15px rgba(15, 23, 42, 0.08);
+  border-color: rgba(5, 150, 105, 0.2);
+}
+

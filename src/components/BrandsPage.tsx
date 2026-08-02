@@ -6,82 +6,85 @@
  * A premium, minimalist artisan brand directory for DreamShelf.
  */
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Award, ShieldCheck, CornerDownRight, ArrowRight, Sparkles } from 'lucide-react';
+import { Product } from '../types';
 
 interface BrandsPageProps {
   onNavigateToShopWithBrand: (brand: string) => void;
   availableBrands: string[];
   onBackToHome?: () => void;
+  productsList: Product[];
 }
 
-export default function BrandsPage({ onNavigateToShopWithBrand, availableBrands, onBackToHome }: BrandsPageProps) {
-  const brandDetails = [
-    {
-      name: 'Aether Studio',
-      origin: 'Copenhagen, Denmark',
-      philosophy: 'Modular wardrobe architecture built on computerised looms with zero structural waist.',
-      established: '2022',
-      focus: 'Premium Apparel & Wardrobes',
-      initials: 'AS'
-    },
-    {
-      name: 'Soma Audio',
-      origin: 'Kyoto, Japan',
-      philosophy: 'Pristine soundscapes encased in sand-blasted titanium and bio-cellulose acoustic chambers.',
-      established: '2024',
-      focus: 'High-Fidelity Acoustics',
-      initials: 'SA'
-    },
-    {
-      name: 'NORD',
-      origin: 'Oslo, Norway',
-      philosophy: 'Artisan double-faced cashmere sewn by hand over 14 hours per piece to defy temporal trends.',
-      established: '2019',
-      focus: 'High-End Outerwear',
-      initials: 'ND'
-    },
-    {
-      name: 'Atmos Gym',
-      origin: 'Portland, USA',
-      philosophy: 'Zero-gravity athletic meshes engineered from ocean-recovered carbon fiber fabrics.',
-      established: '2025',
-      focus: 'Technical Activewear',
-      initials: 'AG'
-    },
-    {
-      name: 'Terracotta Lab',
-      origin: 'Siena, Italy',
-      philosophy: 'Brutalist clay ceramics fired in traditional wood kilns with volcanic mineral glazes.',
-      established: '2020',
-      focus: 'Spatial Design & Objects',
-      initials: 'TL'
-    },
-    {
-      name: 'Obsidian Care',
-      origin: 'Seoul, South Korea',
-      philosophy: 'Cold-pressed bioactive seed oils and marine extracts tailored to skin thermal indices.',
-      established: '2023',
-      focus: 'Organic Thermal Skincare',
-      initials: 'OC'
-    },
-    {
-      name: 'Chronos Scribe',
-      origin: 'Geneva, Switzerland',
-      philosophy: 'Heavy brass writing instruments crafted on high-precision micro-mechanic watchmaking lathes.',
-      established: '2021',
-      focus: 'High-Precision Stationery',
-      initials: 'CS'
-    },
-    {
-      name: 'Solstice Glass',
-      origin: 'Murano, Italy',
-      philosophy: 'Hand-blown structural silicate vessels capture natural solar light spectrum offsets.',
-      established: '2023',
-      focus: 'Silicate Living Objects',
-      initials: 'SG'
-    }
-  ];
+export default function BrandsPage({ onNavigateToShopWithBrand, availableBrands, onBackToHome, productsList }: BrandsPageProps) {
+  const brandDetails = useMemo(() => {
+    return availableBrands.map((brandName) => {
+      // Find a sample product in productsList
+      const sample = productsList.find((p) => p.brand.toLowerCase() === brandName.toLowerCase());
+      
+      // Known brands content fallbacks
+      const knownBrands: Record<string, { origin: string; philosophy: string; focus: string }> = {
+        'Aether Studio': {
+          origin: 'Copenhagen, Denmark',
+          philosophy: 'Modular wardrobe architecture built on computerised looms with zero structural waist.',
+          focus: 'Premium Apparel & Wardrobes'
+        },
+        'Soma Audio': {
+          origin: 'Kyoto, Japan',
+          philosophy: 'Pristine soundscapes encased in sand-blasted titanium and bio-cellulose acoustic chambers.',
+          focus: 'High-Fidelity Acoustics'
+        },
+        'NORD': {
+          origin: 'Oslo, Norway',
+          philosophy: 'Artisan double-faced cashmere sewn by hand over 14 hours per piece to defy temporal trends.',
+          focus: 'High-End Outerwear'
+        },
+        'Atmos Gym': {
+          origin: 'Portland, USA',
+          philosophy: 'Zero-gravity athletic meshes engineered from ocean-recovered carbon fiber fabrics.',
+          focus: 'Technical Activewear'
+        },
+        'Terracotta Lab': {
+          origin: 'Siena, Italy',
+          philosophy: 'Brutalist clay ceramics fired in traditional wood kilns with volcanic mineral glazes.',
+          focus: 'Spatial Design & Objects'
+        },
+        'Obsidian Care': {
+          origin: 'Seoul, South Korea',
+          philosophy: 'Cold-pressed bioactive seed oils and marine extracts tailored to skin thermal indices.',
+          focus: 'Organic Thermal Skincare'
+        },
+        'Chronos Scribe': {
+          origin: 'Geneva, Switzerland',
+          philosophy: 'Heavy brass writing instruments crafted on high-precision micro-mechanic watchmaking lathes.',
+          focus: 'High-Precision Stationery'
+        },
+        'Solstice Glass': {
+          origin: 'Murano, Italy',
+          philosophy: 'Hand-blown structural silicate vessels capture natural solar light spectrum offsets.',
+          focus: 'Silicate Living Objects'
+        }
+      };
+
+      const match = knownBrands[brandName] || {
+        origin: 'Artisan Workshop',
+        philosophy: `Curated ${sample?.category || 'lifestyle'} pieces crafted with precision and dedication.`,
+        focus: sample ? `${sample.category} & ${sample.subcategory}` : 'General Catalog'
+      };
+
+      const initials = brandName.split(' ').map((w) => w[0]).join('').substring(0, 2).toUpperCase() || 'BS';
+
+      return {
+        name: brandName,
+        origin: match.origin,
+        philosophy: match.philosophy,
+        established: '2026',
+        focus: match.focus,
+        initials
+      };
+    });
+  }, [availableBrands, productsList]);
 
   return (
     <div className="space-y-6 animate-fadeIn">
@@ -123,11 +126,9 @@ export default function BrandsPage({ onNavigateToShopWithBrand, availableBrands,
           </div>
         </div>
       </div>
-
       {/* Brand Grid list */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {brandDetails.map((b) => {
-          const isAvailable = availableBrands.includes(b.name);
           return (
             <div 
               id={`brand-card-${b.name.toLowerCase().replace(/\s+/g, '-')}`}
