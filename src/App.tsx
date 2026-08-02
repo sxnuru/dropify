@@ -790,13 +790,10 @@ export default function App() {
                 setCurrentTab('home');
                 setIsMegaMenuOpen(false);
               }}
-              className={`px-3 py-2 rounded-xl text-xs font-sans font-bold tracking-tight transition-all cursor-pointer relative group ${currentTab === 'home' ? 'text-blue-600' : 'text-slate-600 hover:text-slate-950'
-                }`}
+              className={`px-3 py-2 rounded-xl text-xs font-sans font-bold tracking-tight transition-all cursor-pointer relative group ${currentTab === 'home' ? 'text-blue-600' : 'text-slate-600 hover:text-slate-950'}`}
             >
               Home
-              {currentTab === 'home' && (
-                <span className="absolute bottom-0 left-3 right-3 h-0.5 bg-blue-600 rounded-full" />
-              )}
+              <span className={`absolute bottom-0 left-3 right-3 h-0.5 bg-blue-600 rounded-full transition-transform duration-300 origin-left ${currentTab === 'home' ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'}`} />
             </button>
 
             <button
@@ -807,13 +804,10 @@ export default function App() {
                 setCurrentTab('shop');
                 setIsMegaMenuOpen(false);
               }}
-              className={`px-3 py-2 rounded-xl text-xs font-sans font-bold tracking-tight transition-all cursor-pointer relative group ${currentTab === 'shop' && categoryFilter === 'All' ? 'text-blue-600' : 'text-slate-600 hover:text-slate-950'
-                }`}
+              className={`px-3 py-2 rounded-xl text-xs font-sans font-bold tracking-tight transition-all cursor-pointer relative group ${currentTab === 'shop' && categoryFilter === 'All' ? 'text-blue-600' : 'text-slate-600 hover:text-slate-950'}`}
             >
               Shop
-              {currentTab === 'shop' && categoryFilter === 'All' && (
-                <span className="absolute bottom-0 left-3 right-3 h-0.5 bg-blue-600 rounded-full" />
-              )}
+              <span className={`absolute bottom-0 left-3 right-3 h-0.5 bg-blue-600 rounded-full transition-transform duration-300 origin-left ${currentTab === 'shop' && categoryFilter === 'All' ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'}`} />
             </button>
 
             <div
@@ -824,10 +818,10 @@ export default function App() {
               <button
                 id="nav-categories-trigger"
                 onClick={() => setIsMegaMenuOpen(!isMegaMenuOpen)}
-                className={`px-3 py-2 rounded-xl text-xs font-sans font-bold tracking-tight transition-all cursor-pointer flex items-center gap-1 ${isMegaMenuOpen || (categoryFilter !== 'All' && currentTab === 'shop') ? 'text-blue-600 font-extrabold' : 'text-slate-600 hover:text-slate-950'
-                  }`}
+                className={`px-3 py-2 rounded-xl text-xs font-sans font-bold tracking-tight transition-all cursor-pointer flex items-center gap-1 relative group ${isMegaMenuOpen || (categoryFilter !== 'All' && currentTab === 'shop') ? 'text-blue-600 font-extrabold' : 'text-slate-600 hover:text-slate-950'}`}
               >
                 Categories <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 ${isMegaMenuOpen ? 'rotate-180' : ''}`} />
+                <span className={`absolute bottom-0 left-3 right-8 h-0.5 bg-blue-600 rounded-full transition-transform duration-300 origin-left ${categoryFilter !== 'All' && currentTab === 'shop' ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'}`} />
               </button>
 
               {/* Mega Menu Dropdown inside Header, absolute positioned */}
@@ -876,13 +870,10 @@ export default function App() {
                 setCurrentTab('brands');
                 setIsMegaMenuOpen(false);
               }}
-              className={`px-3 py-2 rounded-xl text-xs font-sans font-bold tracking-tight transition-all cursor-pointer relative group ${currentTab === 'brands' ? 'text-blue-600' : 'text-slate-600 hover:text-slate-950'
-                }`}
+              className={`px-3 py-2 rounded-xl text-xs font-sans font-bold tracking-tight transition-all cursor-pointer relative group ${currentTab === 'brands' ? 'text-blue-600' : 'text-slate-600 hover:text-slate-950'}`}
             >
               Brands
-              {currentTab === 'brands' && (
-                <span className="absolute bottom-0 left-3 right-3 h-0.5 bg-blue-600 rounded-full" />
-              )}
+              <span className={`absolute bottom-0 left-3 right-3 h-0.5 bg-blue-600 rounded-full transition-transform duration-300 origin-left ${currentTab === 'brands' ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'}`} />
             </button>
 
 
@@ -891,9 +882,9 @@ export default function App() {
           {/* Search bar & utilities */}
           <div className="flex items-center gap-3 shrink-0">
             {/* Search input with shortcut badge */}
-            <div className="relative hidden lg:block w-64 xl:w-72 transition-all duration-300">
+            <div className={`relative hidden lg:block transition-all duration-300 ${isSearchFocused ? 'w-80 xl:w-96' : 'w-64 xl:w-72'}`}>
               <div className="relative flex items-center">
-                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3" />
+                <Search className={`w-3.5 h-3.5 absolute left-3 transition-colors ${isSearchFocused ? 'text-blue-500' : 'text-slate-400'}`} />
                 <input
                   id="search-input"
                   type="text"
@@ -901,7 +892,7 @@ export default function App() {
                   value={searchQuery}
                   onFocus={() => setIsSearchFocused(true)}
                   onChange={(e) => handleSearch(e.target.value)}
-                  className="w-full pl-9 pr-12 py-2.5 bg-slate-50 border border-slate-200 hover:border-slate-300 rounded-xl text-xs font-sans placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:bg-white transition-all shadow-inner-sm"
+                  className="w-full pl-9 pr-12 py-2.5 bg-slate-50 border border-slate-200 hover:border-slate-300 rounded-xl text-xs font-sans placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:bg-white focus:shadow-md transition-all shadow-inner-sm"
                 />
                 <div className="absolute right-2.5 top-2.5 flex items-center">
                   <span className="bg-slate-200/60 border border-slate-200 text-slate-500 text-[8px] font-mono font-bold px-1.5 py-0.5 rounded leading-none select-none">
