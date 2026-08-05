@@ -10,6 +10,7 @@ import {
   PlusCircle, Package, Trash2, ShieldAlert, Edit, Check, Settings, 
   Search, SlidersHorizontal, X, CheckCircle, Info, ChevronRight, HelpCircle
 } from 'lucide-react';
+import { getProductImage, isFallbackImage } from '../utils/image';
 
 interface SellerDashboardProps {
   onAddProduct: (p: Product) => void;
@@ -97,7 +98,7 @@ export default function SellerDashboard({
     setFormSubcategory(p.subcategory);
     setFormStock(String(p.stock));
     setFormDescription(p.description);
-    setFormImage(p.images[0] || '');
+    setFormImage(isFallbackImage(p.images[0]) ? '' : (p.images[0] || ''));
     setIsFormOpen(true);
   };
 
@@ -107,7 +108,7 @@ export default function SellerDashboard({
 
     const priceNum = parseFloat(formPrice) || 0;
     const stockNum = parseInt(formStock, 10) || 0;
-    const imageLink = formImage.trim() || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&q=80&w=600';
+    const imageLink = formImage.trim();
 
     if (editingProduct) {
       // Edit mode
@@ -338,7 +339,7 @@ export default function SellerDashboard({
                           <td className="p-4 font-mono text-[10px] font-semibold text-slate-500 select-all">{p.id}</td>
                           <td className="p-4">
                             <div className="flex items-center gap-3">
-                              <img src={p.images[0] || "https://placehold.co/100"} alt="" className="w-9 h-9 object-cover rounded-lg border border-slate-100" />
+                              <img src={getProductImage(p)} alt="" className="w-9 h-9 object-cover rounded-lg border border-slate-100" />
                               <div>
                                 <span className="font-bold block text-slate-950">{p.name}</span>
                                 <span className="text-[10px] text-slate-400 font-mono">★ {p.rating} ({p.reviewCount} customer reviews)</span>

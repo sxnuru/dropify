@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { auth } from '../firebase';
 import { signOut } from 'firebase/auth';
+import { getProductImage, isFallbackImage } from '../utils/image';
 
 interface AdminDashboardProps {
   productsList: Product[];
@@ -404,7 +405,7 @@ export default function AdminDashboard({
     setPDiscount(p.originalPrice ? String(p.originalPrice) : '');
     setPStock(String(p.stock));
     setPSku(p.id);
-    setPImages(p.images ? p.images.join(', ') : '');
+    setPImages(p.images ? p.images.filter(img => !isFallbackImage(img)).join(', ') : '');
     setPStory(p.productStory || '');
     setPIsFeatured(!!p.isFeatured);
     setPIsFlashDeal(!!p.isFlashDeal);
@@ -762,7 +763,7 @@ export default function AdminDashboard({
                       const pct = (item.quantity / maxQty) * 100;
                       return (
                         <div key={idx} className="flex items-center gap-3">
-                          <img src={item.product.images[0]} className="w-10 h-10 object-cover rounded-xl border border-slate-200 shrink-0" />
+                          <img src={getProductImage(item.product)} className="w-10 h-10 object-cover rounded-xl border border-slate-200 shrink-0" />
                           <div className="flex-1 min-w-0 space-y-1">
                             <div className="flex justify-between text-xs font-sans text-slate-800 font-medium">
                               <span className="font-bold truncate max-w-[200px]">{item.product.name}</span>
@@ -941,7 +942,7 @@ export default function AdminDashboard({
                         <tr key={p.id} className="hover:bg-slate-50/40 transition-colors">
                           <td className="p-4">
                             <div className="flex items-center gap-3">
-                              <img src={p.images && p.images[0] ? p.images[0] : ''} alt="" className="w-10 h-10 object-cover rounded-xl border border-slate-200/80 bg-white" />
+                              <img src={getProductImage(p)} alt="" className="w-10 h-10 object-cover rounded-xl border border-slate-200/80 bg-white" />
                               <div className="space-y-0.5">
                                 <div className="flex items-center gap-1.5">
                                   <span className="font-bold text-slate-900 truncate block max-w-[200px]">{p.name}</span>
@@ -1484,7 +1485,7 @@ export default function AdminDashboard({
                           }`}
                         >
                           <td className="p-4 flex items-center gap-3">
-                            <img src={p.images[0]} className="w-9 h-9 object-cover rounded-lg border" />
+                            <img src={getProductImage(p)} className="w-9 h-9 object-cover rounded-lg border" />
                             <div>
                               <span className="font-bold text-slate-800 block max-w-[200px] truncate">{p.name}</span>
                               <span className="text-[10px] text-slate-400 block">{p.brand} • {p.category}</span>
@@ -2094,7 +2095,7 @@ export default function AdminDashboard({
                     {selectedOrder.items.map((item, idx) => (
                       <div key={idx} className="flex justify-between items-center text-xs">
                         <div className="flex gap-2 items-center">
-                          <img src={item.product.images[0]} className="w-8 h-8 object-cover rounded" />
+                          <img src={getProductImage(item.product)} className="w-8 h-8 object-cover rounded" />
                           <div>
                             <span className="font-bold text-slate-850 truncate block max-w-[200px]">{item.product.name}</span>
                             <span className="text-[9px] text-slate-400 block font-mono">Qty: {item.quantity} • Tone: {item.selectedColor} • Size: {item.selectedSize}</span>

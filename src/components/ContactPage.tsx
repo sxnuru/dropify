@@ -92,7 +92,7 @@ export default function ContactPage({ onBackToHome }: ContactPageProps) {
                 </div>
                 <div>
                   <span className="block font-mono text-[9px] text-slate-400 uppercase tracking-wider font-bold">Inquiries Email</span>
-                  <a href="mailto:concierge@dreamshelf.com" className="text-slate-900 font-bold hover:text-blue-600 transition-colors">concierge@dreamshelf.com</a>
+                  <a href="mailto:info@dreamshelf.co.uk" className="text-slate-900 font-bold hover:text-blue-600 transition-colors">info@dreamshelf.co.uk</a>
                   <p className="text-[10px] text-slate-400 mt-0.5">Average response: &lt; 2 hours</p>
                 </div>
               </div>
@@ -103,8 +103,8 @@ export default function ContactPage({ onBackToHome }: ContactPageProps) {
                 </div>
                 <div>
                   <span className="block font-mono text-[9px] text-slate-400 uppercase tracking-wider font-bold">Concierge Hotline</span>
-                  <span className="text-slate-900 font-bold block">+1 (800) 555-0190</span>
-                  <p className="text-[10px] text-slate-400 mt-0.5">Toll-free, Monday to Friday (9am - 6pm EST)</p>
+                  <span className="text-slate-900 font-bold block">+44 7828 755062</span>
+                  <p className="text-[10px] text-slate-400 mt-0.5">Monday to Friday (9am - 6pm GMT)</p>
                 </div>
               </div>
 
@@ -114,8 +114,9 @@ export default function ContactPage({ onBackToHome }: ContactPageProps) {
                 </div>
                 <div>
                   <span className="block font-mono text-[9px] text-slate-400 uppercase tracking-wider font-bold">Atelier Office</span>
-                  <span className="text-slate-900 font-bold block">742 Bellevue Avenue, Apt 4B</span>
-                  <span className="text-slate-500 block">Seattle, WA 98102</span>
+                  <span className="text-slate-900 font-bold block">146 Elizabeth Street</span>
+                  <span className="text-slate-500 block">Manchester, England, M8 8BQ</span>
+                  <span className="text-[9px] font-mono text-slate-400 block mt-1">Company Reg No: 17141473</span>
                 </div>
               </div>
             </div>
@@ -226,7 +227,7 @@ export default function ContactPage({ onBackToHome }: ContactPageProps) {
               <div>
                 <span className="font-bold block text-sm">Concierge Transmission Success!</span>
                 <p className="mt-1 font-sans text-[11px] leading-relaxed text-blue-700">
-                  Your communication has been processed and routed securely to our Seattle headquarters. An assistant will contact you at <strong>{email}</strong> shortly.
+                  Your communication has been processed and routed securely to our Manchester office. An assistant will contact you at <strong>{email}</strong> shortly.
                 </p>
               </div>
             </div>

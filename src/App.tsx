@@ -6,7 +6,7 @@ import { PRODUCTS } from './data';
 
 import React, { useState, useEffect } from 'react';
 import { Product, CartItem, Order, UserProfile } from './types';
-import { getProducts, addProduct, updateProduct, deleteProduct } from './firebaseProducts';
+import { getProducts, addProduct, updateProduct, deleteProduct, getProductById, searchProducts, getFeaturedProducts } from './firebaseProducts';
 import HomePage from './components/HomePage';
 import CategoryShop from './components/CategoryShop';
 import ProductDetails from './components/ProductDetails';
@@ -18,6 +18,7 @@ import AuthPages from './components/AuthPages';
 import SellerDashboard from './components/SellerDashboard';
 import AdminDashboard from './components/AdminDashboard';
 import { formatPrice } from './utils/currency';
+import { getProductImage } from './utils/image';
 import { auth, db } from './firebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { doc, getDoc, collection, onSnapshot, query, where, setDoc } from 'firebase/firestore';
@@ -77,6 +78,8 @@ export default function App() {
   // Products Local Store State
   const [productsList, setProductsList] = useState<Product[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [recentlyViewed, setRecentlyViewed] = useState<Product[]>([]);
+  const [upsellProducts, setUpsellProducts] = useState<Product[]>([]);
 
   // Shopping States
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -144,57 +147,68 @@ export default function App() {
     }
   };
 
+  // Load upsell products once on mount
   useEffect(() => {
-    let unsubscribeSnapshot: () => void = () => {};
-
-    async function initProductSync() {
+    async function loadUpsell() {
       try {
-        // Ensure seeding occurs if empty
-        const initialProducts = await getProducts();
-        
-        // Listen live to Firestore collection snapshot changes
-        unsubscribeSnapshot = onSnapshot(collection(db, "products"), (snapshot) => {
-          const products: Product[] = [];
-          snapshot.forEach((doc) => {
-            const data = doc.data();
-            products.push({
-              ...data,
-              id: doc.id,
-              name: data.title || data.name || "",
-              isFeatured: !!data.featured || !!data.isFeatured,
-              isFlashDeal: !!data.sale || !!data.isFlashDeal,
-              isNew: !!data.isNew,
-              isActive: data.isActive !== false
-            } as Product);
-          });
-          console.log("Snapshot size:", snapshot.docs.length);
-          console.log("Mapped products:", products.length);
-          console.log("First mapped product:", products[0]);
-          setProductsList(products);
-          if (products.length > 0) {
-            setSelectedProduct((prev) => {
-              if (prev) {
-                const updated = products.find(p => p.id === prev.id);
-                return updated || products[0];
-              }
-              return products[0];
-            });
-          }
-        });
+        const list = await getFeaturedProducts(5);
+        setUpsellProducts(list);
       } catch (error) {
-        console.error("Error initializing live Firestore product sync:", error);
+        console.error("Error loading upsell products:", error);
       }
     }
-
-    initProductSync();
-    return () => {
-      unsubscribeSnapshot();
-    };
+    loadUpsell();
   }, []);
+
+  // Sync recentlyViewedIds to recentlyViewed product list dynamically
+  useEffect(() => {
+    let active = true;
+    async function loadRecentlyViewed() {
+      if (recentlyViewedIds.length === 0) {
+        if (active) setRecentlyViewed([]);
+        return;
+      }
+      try {
+        const items = await Promise.all(
+          recentlyViewedIds.map(id => getProductById(id))
+        );
+        if (active) {
+          setRecentlyViewed(items.filter(Boolean) as Product[]);
+        }
+      } catch (error) {
+        console.error("Error loading recently viewed products:", error);
+      }
+    }
+    loadRecentlyViewed();
+    return () => {
+      active = false;
+    };
+  }, [recentlyViewedIds]);
+
+  // Load products list on demand when entering tabs that require full catalog
+  useEffect(() => {
+    let active = true;
+    async function fetchCatalogProducts() {
+      if (currentTab === 'admin' || currentTab === 'seller-hub' || currentTab === 'brands') {
+        try {
+          const list = await getProducts();
+          if (active) {
+            setProductsList(list);
+          }
+        } catch (error) {
+          console.error("Error loading full catalog for dashboard/brands:", error);
+        }
+      }
+    }
+    fetchCatalogProducts();
+    return () => {
+      active = false;
+    };
+  }, [currentTab]);
 
   // Listen to Firestore Orders (real-time sync)
   useEffect(() => {
-    let unsubscribeOrders: () => void = () => {};
+    let unsubscribeOrders: () => void = () => { };
 
     function initOrdersSync() {
       try {
@@ -232,7 +246,7 @@ export default function App() {
 
   // Listen to Firestore Users/Customers collection (real-time sync)
   useEffect(() => {
-    let unsubscribeUsers: () => void = () => {};
+    let unsubscribeUsers: () => void = () => { };
 
     function initUsersSync() {
       try {
@@ -576,23 +590,30 @@ export default function App() {
   };
 
   // Global Navigation Helper
-  const handleNavigateToProduct = (id: string) => {
-    const found = productsList.find((p) => p.id === id);
-    if (found) {
-      setSelectedProduct(found);
-      setRecentlyViewedIds((prev) => {
-        const filtered = prev.filter((x) => x !== id);
-        return [id, ...filtered].slice(0, 8);
-      });
-      setCurrentTab('product');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+  const handleNavigateToProduct = async (id: string) => {
+    try {
+      const found = await getProductById(id);
+      if (found) {
+        setSelectedProduct(found);
+        setRecentlyViewedIds((prev) => {
+          const filtered = prev.filter((x) => x !== id);
+          return [id, ...filtered].slice(0, 8);
+        });
+        setCurrentTab('product');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    } catch (error) {
+      console.error("Error navigating to product detail view:", error);
     }
   };
 
   const handleNavigateToShop = (catOrBrand?: string) => {
-    const brandsList = Array.from(new Set(productsList.map(p => p.brand)));
+    const categories = [
+      'Fashion', 'Toys & Games', 'Sports & Outdoors', 'Health & Personal Care', 'Home & Garden', 'Electronics', 'Food & Grocery', 'Other'
+    ];
     if (catOrBrand) {
-      if (brandsList.includes(catOrBrand)) {
+      const isCategory = categories.some(cat => cat.toLowerCase() === catOrBrand.toLowerCase());
+      if (!isCategory) {
         setBrandFilter(catOrBrand);
         setCategoryFilter('All');
       } else {
@@ -608,27 +629,77 @@ export default function App() {
   };
 
   // Search Logic
-  const handleSearch = (query: string) => {
+  const handleSearch = async (query: string) => {
     setSearchQuery(query);
     if (!query.trim()) {
       setSearchResults([]);
       return;
     }
-    const hits = productsList.filter((p) =>
-      p.name.toLowerCase().includes(query.toLowerCase()) ||
-      p.brand.toLowerCase().includes(query.toLowerCase()) ||
-      p.category.toLowerCase().includes(query.toLowerCase())
-    );
+
+    let sourceList = productsList;
+    if (sourceList.length === 0) {
+      try {
+        sourceList = await getProducts();
+        setProductsList(sourceList);
+      } catch (error) {
+        console.error("Failed to load products for search:", error);
+      }
+    }
+
+    const qStr = query.toLowerCase().trim();
+    const hits = sourceList.filter((p) => {
+      const name = (p.name || (p as any).title || "").toLowerCase();
+      const brand = (p.brand || "").toLowerCase();
+      const category = (p.category || "").toLowerCase();
+      const subcategory = (p.subcategory || "").toLowerCase();
+      const sku = ((p as any).sku || "").toLowerCase();
+      const description = (p.description || "").toLowerCase();
+      
+      return (
+        name.includes(qStr) || 
+        brand.includes(qStr) || 
+        category.includes(qStr) || 
+        subcategory.includes(qStr) ||
+        sku.includes(qStr) ||
+        description.includes(qStr)
+      );
+    });
+
     setSearchResults(hits);
   };
 
-  const handleSelectSearchTerm = (term: string) => {
+  const handleSelectSearchTerm = async (term: string) => {
     setSearchQuery(term);
-    const hits = productsList.filter((p) =>
-      p.name.toLowerCase().includes(term.toLowerCase()) ||
-      p.brand.toLowerCase().includes(term.toLowerCase()) ||
-      p.category.toLowerCase().includes(term.toLowerCase())
-    );
+    
+    let sourceList = productsList;
+    if (sourceList.length === 0) {
+      try {
+        sourceList = await getProducts();
+        setProductsList(sourceList);
+      } catch (error) {
+        console.error("Failed to load products for search:", error);
+      }
+    }
+
+    const qStr = term.toLowerCase().trim();
+    const hits = sourceList.filter((p) => {
+      const name = (p.name || (p as any).title || "").toLowerCase();
+      const brand = (p.brand || "").toLowerCase();
+      const category = (p.category || "").toLowerCase();
+      const subcategory = (p.subcategory || "").toLowerCase();
+      const sku = ((p as any).sku || "").toLowerCase();
+      const description = (p.description || "").toLowerCase();
+      
+      return (
+        name.includes(qStr) || 
+        brand.includes(qStr) || 
+        category.includes(qStr) || 
+        subcategory.includes(qStr) ||
+        sku.includes(qStr) ||
+        description.includes(qStr)
+      );
+    });
+
     setSearchResults(hits);
 
     // Add to recent searches (up to 5 items)
@@ -1147,9 +1218,9 @@ export default function App() {
                         { label: 'Help & Support', subTab: 'support', icon: HelpCircle },
                         ...(currentUser && currentUser.role === 'admin'
                           ? [
-                              { label: 'Seller Portal', tab: 'seller-hub', icon: Settings },
-                              { label: 'Admin Dashboard', tab: 'admin', icon: ShieldCheck }
-                            ]
+                            { label: 'Seller Portal', tab: 'seller-hub', icon: Settings },
+                            { label: 'Admin Dashboard', tab: 'admin', icon: ShieldCheck }
+                          ]
                           : [])
                       ].map((item, index) => {
                         const IconComponent = item.icon;
@@ -1210,28 +1281,20 @@ export default function App() {
             onNavigateToProduct={handleNavigateToProduct}
             onAddToCart={handleAddToCart}
             onAddToWishlist={handleAddToWishlist}
-            products={productsList}
             wishlistIds={wishlist.map(w => w.id)}
           />
         )}
 
         {currentTab === 'shop' && (
-          (() => {
-            console.log("APP productsList length =", productsList.length);
-            console.log("First product =", productsList[0]);
-            return (
-              <CategoryShop
-                onNavigateToProduct={handleNavigateToProduct}
-                onAddToCart={handleAddToCart}
-                onAddToWishlist={handleAddToWishlist}
-                wishlistIds={wishlist.map(w => w.id)}
-                initialCategoryFilter={categoryFilter}
-                initialBrandFilter={brandFilter}
-                productsList={productsList}
-                onBackToHome={() => setCurrentTab('home')}
-              />
-            );
-          })()
+          <CategoryShop
+            onNavigateToProduct={handleNavigateToProduct}
+            onAddToCart={handleAddToCart}
+            onAddToWishlist={handleAddToWishlist}
+            wishlistIds={wishlist.map(w => w.id)}
+            initialCategoryFilter={categoryFilter}
+            initialBrandFilter={brandFilter}
+            onBackToHome={() => setCurrentTab('home')}
+          />
         )}
 
         {currentTab === 'brands' && (
@@ -1255,13 +1318,12 @@ export default function App() {
         {currentTab === 'product' && selectedProduct && (
           <ProductDetails
             product={selectedProduct}
-            productsList={productsList}
             onAddToCart={handleAddToCart}
             onAddToWishlist={handleAddToWishlist}
             onNavigateToProduct={handleNavigateToProduct}
             isInWishlist={wishlist.some(w => w.id === selectedProduct.id)}
             onBackToShop={() => setCurrentTab('shop')}
-            recentlyViewed={productsList.filter(p => recentlyViewedIds.includes(p.id))}
+            recentlyViewed={recentlyViewed}
           />
         )}
 
@@ -1283,7 +1345,7 @@ export default function App() {
             onLogout={handleLogout}
             onBackToHome={() => setCurrentTab('home')}
             ordersList={ordersList}
-            recentlyViewed={productsList.filter(p => recentlyViewedIds.includes(p.id))}
+            recentlyViewed={recentlyViewed}
           />
         )}
 
@@ -1366,7 +1428,7 @@ export default function App() {
                   {cart.length > 0 ? (
                     cart.map((item) => (
                       <div id={`cart-item-${item.id}`} key={item.id} className="flex gap-4 items-center bg-white border border-slate-100 p-3.5 rounded-2xl shadow-sm hover:shadow-md transition-all relative group">
-                        <img src={item.product.images[0]} alt="" className="w-14 h-14 object-cover rounded-xl border border-slate-100 bg-slate-50" />
+                        <img src={getProductImage(item.product)} alt="" className="w-14 h-14 object-cover rounded-xl border border-slate-100 bg-slate-50" />
 
                         <div className="flex-1 min-w-0 space-y-1 text-xs">
                           <span className="font-mono text-[9px] text-slate-400 uppercase tracking-wider block">{item.product.brand}</span>
@@ -1438,7 +1500,7 @@ export default function App() {
                     <div className="space-y-2">
                       {saveForLater.map((item) => (
                         <div key={item.id} className="flex gap-3 items-center bg-slate-50 border border-slate-100 p-2.5 rounded-xl text-xs">
-                          <img src={item.product.images[0]} className="w-10 h-10 object-cover rounded-lg border border-slate-100" />
+                          <img src={getProductImage(item.product)} className="w-10 h-10 object-cover rounded-lg border border-slate-100" />
                           <div className="flex-1 min-w-0 space-y-0.5">
                             <h5 className="font-bold text-slate-800 truncate">{item.product.name}</h5>
                             <span className="text-[10px] text-slate-500 font-mono">{formatPrice(item.product.price)}</span>
@@ -1471,7 +1533,7 @@ export default function App() {
                       <input
                         type="text"
                         maxLength={5}
-                        placeholder="ZIP / Postal Code (e.g. 98102)"
+                        placeholder="ZIP / Postal Code (e.g. M8 8BQ)"
                         value={estimatorZip}
                         onChange={(e) => setEstimatorZip(e.target.value.replace(/\D/g, ''))}
                         className="flex-1 bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono placeholder-slate-400 focus:outline-none focus:border-blue-500"
@@ -1500,7 +1562,7 @@ export default function App() {
                   <div className="space-y-3 pt-4 border-t border-slate-100">
                     <span className="block text-[9px] font-mono text-slate-400 uppercase tracking-widest font-bold text-amber-600">Exclusive Cart Additions</span>
                     <div className="grid grid-cols-1 gap-2.5">
-                      {productsList.filter(p => !cart.some(item => item.product.id === p.id)).slice(0, 2).map((item) => (
+                      {upsellProducts.filter(p => !cart.some(item => item.product.id === p.id)).slice(0, 2).map((item) => (
                         <div key={item.id} className="flex gap-3 items-center bg-white border border-slate-100 p-2.5 rounded-xl">
                           <img src={item.images[0]} className="w-10 h-10 object-cover rounded-lg bg-slate-50" />
                           <div className="flex-1 min-w-0">
@@ -1861,8 +1923,8 @@ export default function App() {
                           key={tier.id}
                           onClick={() => setShippingSpeed(tier.id as any)}
                           className={`p-3 rounded-2xl border-2 cursor-pointer text-left transition-all relative ${shippingSpeed === tier.id
-                              ? "bg-blue-50/50 border-blue-600 text-blue-900"
-                              : "bg-white border-slate-100 hover:border-slate-200 text-slate-600"
+                            ? "bg-blue-50/50 border-blue-600 text-blue-900"
+                            : "bg-white border-slate-100 hover:border-slate-200 text-slate-600"
                             }`}
                         >
                           <div className="font-bold text-[11px] font-sans flex justify-between items-center">
@@ -1959,7 +2021,7 @@ export default function App() {
                   <div className="space-y-1.5 max-h-32 overflow-y-auto pr-1">
                     {cart.map((item) => (
                       <div key={item.id} className="flex gap-3 items-center bg-white border border-slate-50 p-2 rounded-xl text-xs">
-                        <img src={item.product.images[0]} className="w-8 h-8 object-cover rounded-lg border border-slate-100" />
+                        <img src={getProductImage(item.product)} className="w-8 h-8 object-cover rounded-lg border border-slate-100" />
                         <div className="flex-1 min-w-0">
                           <h6 className="font-bold text-slate-800 truncate">{item.product.name}</h6>
                           <span className="text-[9px] text-slate-400 font-mono">Color: {item.selectedColor} • Size: {item.selectedSize} • Qty: {item.quantity}</span>
@@ -2038,6 +2100,11 @@ export default function App() {
             <p className="text-slate-400 leading-relaxed">
               An avant-garde marketplace for progressive curators. Transacting fashion, sound engineering, bespoke spaces, and collectibles.
             </p>
+            <div className="text-[10px] text-slate-400 space-y-0.5 pt-2 border-t border-slate-900">
+              <span className="block">146 Elizabeth Street, Manchester, England, M8 8BQ</span>
+              <span className="block">Phone: +44 7828 755062 | Email: info@dreamshelf.co.uk</span>
+              <span className="block">Reg No: 17141473</span>
+            </div>
             <div className="flex gap-3 pt-2 text-[10px] font-mono tracking-widest text-slate-500">
               <a href="#instagram" className="hover:text-blue-500 transition-colors uppercase">IG</a>
               <span>/</span>
@@ -2175,8 +2242,8 @@ export default function App() {
                         setIsMobileMenuOpen(false);
                       }}
                       className={`w-full text-left px-3 py-2.5 rounded-xl font-bold tracking-tight transition-all flex items-center justify-between ${currentTab === link.id
-                          ? 'bg-blue-50 text-blue-600'
-                          : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                        ? 'bg-blue-50 text-blue-600'
+                        : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
                         }`}
                     >
                       <span>{link.label}</span>
@@ -2217,7 +2284,7 @@ export default function App() {
       {showUndoToast && lastRemovedItem && (
         <div className="fixed bottom-6 right-6 z-55 max-w-sm w-full bg-slate-900 text-white rounded-2xl shadow-2xl p-4 border border-slate-800 animate-slideInRight flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <img src={lastRemovedItem.product.images[0]} className="w-9 h-9 object-cover rounded-lg border border-slate-800" />
+            <img src={getProductImage(lastRemovedItem.product)} className="w-9 h-9 object-cover rounded-lg border border-slate-800" />
             <div className="min-w-0">
               <span className="block text-[10px] text-blue-400 font-mono font-bold uppercase tracking-wider">Removed item</span>
               <p className="text-xs font-bold truncate text-slate-100">{lastRemovedItem.product.name}</p>
@@ -2373,8 +2440,17 @@ export default function App() {
                   <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
                     <span className="block text-[8px] font-mono text-slate-400 uppercase font-black mb-1">OUR SUSTAINABILITY DIRECTIVE</span>
                     <p className="text-[11px] text-slate-500">
-                      We believe aesthetic curation must respect our biosphere. Every listing verified on DreamShelf strictly complies with eco-friendly standards, wood-fired ceramic certifications, GOTS-certified organic cotton, and complete carbon-offset compensations.
+                       We believe aesthetic curation must respect our biosphere. Every listing verified on DreamShelf strictly complies with eco-friendly standards, wood-fired ceramic certifications, GOTS-certified organic cotton, and complete carbon-offset compensations.
                     </p>
+                  </div>
+                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                    <span className="block text-[8px] font-mono text-slate-400 uppercase font-black mb-1">COMPANY INFORMATION</span>
+                    <div className="text-[11px] text-slate-500 space-y-1">
+                      <p><strong>Office Address:</strong> 146 Elizabeth Street, Manchester, England, M8 8BQ</p>
+                      <p><strong>Phone:</strong> +44 7828 755062</p>
+                      <p><strong>Email:</strong> info@dreamshelf.co.uk</p>
+                      <p><strong>Company Registration Number:</strong> 17141473</p>
+                    </div>
                   </div>
                 </div>
               )}

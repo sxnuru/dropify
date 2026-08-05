@@ -11,6 +11,8 @@ import {
 } from 'lucide-react';
 import ProductCard from './ProductCard';
 import { formatPrice } from '../utils/currency';
+import { getProductImage } from '../utils/image';
+import { getProductsByCategory } from '../firebaseProducts';
 
 interface CategoryShopProps {
   onNavigateToProduct: (id: string) => void;
@@ -19,7 +21,7 @@ interface CategoryShopProps {
   wishlistIds: string[];
   initialCategoryFilter?: string;
   initialBrandFilter?: string;
-  productsList: Product[];
+  productsList?: Product[];
   onBackToHome?: () => void;
 }
 
@@ -77,10 +79,36 @@ export default function CategoryShop({
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
 
+  // Local state for category products loaded from Firestore
+  const [categoryProducts, setCategoryProducts] = useState<Product[]>([]);
+
+  // Real data loading from Firestore when selectedCategory changes
+  useEffect(() => {
+    let active = true;
+    async function load() {
+      setIsLoading(true);
+      try {
+        const list = await getProductsByCategory(selectedCategory);
+        if (active) {
+          setCategoryProducts(list);
+        }
+      } catch (error) {
+        console.error("Error loading products by category:", error);
+      } finally {
+        if (active) {
+          setIsLoading(false);
+        }
+      }
+    }
+    load();
+    return () => {
+      active = false;
+    };
+  }, [selectedCategory]);
+
   // Sync props when they change externally from header navigation
   useEffect(() => {
     setSelectedCategory(initialCategoryFilter);
-    triggerLoading();
   }, [initialCategoryFilter]);
 
   useEffect(() => {
@@ -92,7 +120,7 @@ export default function CategoryShop({
     triggerLoading();
   }, [initialBrandFilter]);
 
-  // Simulate premium skeleton loading on filter updates
+  // Simulate premium skeleton loading on local facet filter updates
   const triggerLoading = () => {
     setIsLoading(true);
     const timer = setTimeout(() => {
@@ -103,7 +131,6 @@ export default function CategoryShop({
 
   const handleCategoryChange = (cat: string) => {
     setSelectedCategory(cat);
-    triggerLoading();
   };
 
   const handleBrandToggle = (brand: string) => {
@@ -143,30 +170,30 @@ export default function CategoryShop({
   
   // Available Brands in catalog
   const brands = Array.from(
-  new Set(
-    productsList
-      .map(p => p.brand)
-      .filter(Boolean)
-  )
-);
+    new Set(
+      categoryProducts
+        .map(p => p.brand)
+        .filter(Boolean)
+    )
+  );
   // Available unique colors & sizes gathered from catalog for high fidelity
-  const uniqueColors = ['All', ...Array.from(new Set(productsList.flatMap(p => p.colors || [])))].slice(0, 8);
-  const uniqueSizes = ['All', ...Array.from(new Set(productsList.flatMap(p => p.sizes || [])))].slice(0, 6);
+  const uniqueColors = ['All', ...Array.from(new Set(categoryProducts.flatMap(p => p.colors || [])))].slice(0, 8);
+  const uniqueSizes = ['All', ...Array.from(new Set(categoryProducts.flatMap(p => p.sizes || [])))].slice(0, 6);
 
 
   // Price range options
   const priceRangeOptions = [
-  { label: "Under £50", value: "0-50" },
-  { label: "£50 - £150", value: "50-150" },
-  { label: "Over £150", value: "150+" },
-];
+    { label: "Under £50", value: "0-50" },
+    { label: "£50 - £150", value: "50-150" },
+    { label: "Over £150", value: "150+" },
+  ];
 
   // Filtering calculation logic
   console.log("========== CATEGORY SHOP DEBUG ==========");
-  console.log("productsList.length =", productsList.length);
-  console.log("productsList =", productsList);
+  console.log("categoryProducts.length =", categoryProducts.length);
+  console.log("categoryProducts =", categoryProducts);
   console.log("selectedCategory =", selectedCategory);
-  const filteredProducts = productsList.filter((p, index) => {
+  const filteredProducts = categoryProducts.filter((p, index) => {
     // 1. Category match with custom mappings for extended list
     const matchesCategory = matchProductCategory(p, selectedCategory);
     
@@ -580,7 +607,7 @@ const visibleProducts = filteredProducts.slice(0, PRODUCTS_PER_PAGE);
                     >
                       {/* Left side Image block */}
                       <div className="relative w-full sm:w-44 h-44 rounded-2xl overflow-hidden bg-slate-50 flex-shrink-0 flex items-center justify-center">
-                        <img src={p.images[0]} alt={p.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                        <img src={getProductImage(p)} alt={p.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
                         
                         {/* Tags floating overlay */}
                         <div className="absolute top-2.5 left-2.5 flex flex-col gap-1 z-10">

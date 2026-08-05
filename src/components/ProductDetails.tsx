@@ -13,9 +13,11 @@ import {
   X, ChevronLeft, ChevronRight, Share2, AlertCircle, Check
 } from 'lucide-react';
 import ProductCard from './ProductCard';
+import { getCleanProductImages } from '../utils/image';
+import { getProductsByCategory, getProductById } from '../firebaseProducts';
 interface ProductDetailsProps {
   product: Product;
-  productsList: Product[];
+  productsList?: Product[];
   onAddToCart: (p: Product, color: string, size: string) => void;
   onAddToWishlist: (p: Product) => void;
   onNavigateToProduct: (id: string) => void;
@@ -27,10 +29,7 @@ interface ProductDetailsProps {
 export default function ProductDetails({ 
   product, productsList, onAddToCart, onAddToWishlist, onNavigateToProduct, isInWishlist, onBackToShop, recentlyViewed 
 }: ProductDetailsProps) {
-  const safeImages =
-    Array.isArray(product.images) && product.images.length
-      ? product.images
-      : ['https://placehold.co/500x500?text=No+Image'];
+  const safeImages = getCleanProductImages(product);
 
   const [activeImg, setActiveImg] = useState(safeImages[0]);
   const [selectedColor, setSelectedColor] = useState(product.colors?.[0] || 'Default');
@@ -54,6 +53,38 @@ export default function ProductDetails({
   const [purchaseQuantity, setPurchaseQuantity] = useState(1);
   const [isFading, setIsFading] = useState(false);
   const [isImgLoading, setIsImgLoading] = useState(true);
+
+  // Mobile swipe support states & handlers
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
+  const minSwipeDistance = 50;
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > minSwipeDistance;
+    const isRightSwipe = distance < -minSwipeDistance;
+
+    if (isLeftSwipe || isRightSwipe) {
+      const idx = safeImages.indexOf(activeImg);
+      if (isLeftSwipe) {
+        const nextIdx = idx < safeImages.length - 1 ? idx + 1 : 0;
+        handleThumbnailClick(safeImages[nextIdx]);
+      } else {
+        const prevIdx = idx > 0 ? idx - 1 : safeImages.length - 1;
+        handleThumbnailClick(safeImages[prevIdx]);
+      }
+    }
+  };
 
   // Dynamic reviews state to allow writing real-time appraisals
   const [reviewsList, setReviewsList] = useState<Review[]>(product.reviews || []);
@@ -173,13 +204,37 @@ export default function ProductDetails({
     setTimeout(() => setReviewSuccess(false), 4000);
   };
 
-  // Recommendations: Customers Also Viewed (3 similar items based on category)
-  const customersAlsoViewed = PRODUCTS.filter(p => p.category === product.category && p.id !== product.id).slice(0, 3);
-  
-  // Recommendations: Recently Viewed pieces (3 different items, falling back to recommendations if prop is empty/undefined)
-  const resolvedRecentlyViewed = (recentlyViewed && recentlyViewed.length > 0)
-    ? recentlyViewed
-    : PRODUCTS.filter(p => p.id !== product.id && p.category !== product.category).slice(0, 3);
+  const [customersAlsoViewed, setCustomersAlsoViewed] = useState<Product[]>([]);
+  const [resolvedRecentlyViewed, setResolvedRecentlyViewed] = useState<Product[]>([]);
+
+  useEffect(() => {
+    let active = true;
+    async function loadRecommendations() {
+      try {
+        const list = await getProductsByCategory(product.category, 6);
+        if (!active) return;
+        
+        // Customers Also Viewed: items in same category excluding current product
+        const sameCategory = list.filter(p => p.id !== product.id).slice(0, 3);
+        setCustomersAlsoViewed(sameCategory);
+        
+        // Recently Viewed: use prop recentlyViewed if available, 
+        // else fallback to some other items from this category
+        if (recentlyViewed && recentlyViewed.length > 0) {
+          setResolvedRecentlyViewed(recentlyViewed);
+        } else {
+          const fallbackList = list.filter(p => p.id !== product.id).slice(3, 6);
+          setResolvedRecentlyViewed(fallbackList);
+        }
+      } catch (error) {
+        console.error("Error loading product recommendations:", error);
+      }
+    }
+    loadRecommendations();
+    return () => {
+      active = false;
+    };
+  }, [product.id, recentlyViewed]);
 
   return (
     <div id={`product-details-${product.id}`} className="space-y-6 animate-fadeIn relative pb-20 lg:pb-0">
@@ -204,6 +259,9 @@ export default function ProductDetails({
               className="relative bg-slate-50 rounded-3xl overflow-hidden border border-slate-200/50 aspect-square flex items-center justify-center cursor-zoom-in group shadow-inner"
               onMouseMove={handleMouseMoveZoom}
               onMouseLeave={handleMouseLeaveZoom}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
               onClick={() => {
                 if (!is360Mode) {
                   const idx = safeImages.indexOf(activeImg);

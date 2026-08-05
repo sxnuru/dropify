@@ -8,6 +8,7 @@ import { Address, SavedCard, Order, Product, UserProfile } from '../types';
 import { formatPrice } from '../utils/currency';
 import OrderTracking from './OrderTracking';
 import StatusBadge from './StatusBadge';
+import { getProductImage } from '../utils/image';
 import { 
   User, Award, Gift, Shield, Bell, MapPin, 
   CreditCard, Copy, Check, Plus, Trash2, Tag, Eye, ShoppingBag, Lock, Smartphone, RefreshCw, ChevronRight, Star, Sparkles, Heart, HelpCircle, LogOut, Menu
@@ -50,8 +51,8 @@ export default function AccountDashboard({
   onLogout = () => {},
   currentUser = {
     fullName: 'Guest User',
-    email: 'guest@example.co.uk',
-    phone: '+44 0000 000000',
+    email: 'info@dreamshelf.co.uk',
+    phone: '+44 7828 755062',
     status: 'Guest Tier',
     memberSince: 'N/A',
     loyaltyPoints: 0,
@@ -532,7 +533,7 @@ export default function AccountDashboard({
                           {firstItem && (
                             <div className="flex gap-4 items-center">
                               <img 
-                                src={firstItem.product.images[0]} 
+                                src={getProductImage(firstItem.product)} 
                                 alt={firstItem.product.name} 
                                 className="w-14 h-14 object-cover rounded-xl border border-slate-100 shadow-sm" 
                               />
@@ -609,7 +610,7 @@ export default function AccountDashboard({
                   >
                     <div className="space-y-4">
                       <div className="relative aspect-square rounded-2xl overflow-hidden bg-slate-50/50">
-                        <img src={p.images[0]} alt={p.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                        <img src={getProductImage(p)} alt={p.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
                         <button
                           onClick={() => onToggleWishlist(p)}
                           className="absolute top-3 right-3 p-2 bg-white/90 rounded-full hover:bg-white text-rose-500 shadow-sm transition-transform cursor-pointer hover:scale-110"
@@ -694,7 +695,7 @@ export default function AccountDashboard({
                   >
                     <div className="space-y-4">
                       <div className="relative aspect-square rounded-2xl overflow-hidden bg-slate-50/50">
-                        <img src={p.images[0]} alt="" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                        <img src={getProductImage(p)} alt="" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
                         <span className="absolute top-3 left-3 bg-slate-950 text-white font-mono text-[8px] font-bold px-2 py-0.5 rounded tracking-wider uppercase">
                           VIEWED
                         </span>
@@ -906,11 +907,11 @@ export default function AccountDashboard({
                 </div>
                 <div className="space-y-1 border-t border-slate-100/50 pt-3">
                   <span className="font-bold text-slate-900 block">How can I request an exchange or return?</span>
-                  <p className="text-slate-500 leading-relaxed">We offer a 14-day hassle-free return and exchange policy. Simply go to "My Orders", select your delivered order, and click "Request Easy Exchange" or reach out to our team at support@dreamshelf.pk.</p>
+                  <p className="text-slate-500 leading-relaxed">We offer a 14-day hassle-free return and exchange policy. Simply go to "My Orders", select your delivered order, and click "Request Easy Exchange" or reach out to our team at info@dreamshelf.co.uk.</p>
                 </div>
                 <div className="space-y-1 border-t border-slate-100/50 pt-3 bg-blue-50/50 p-4 rounded-xl border border-blue-100">
                   <span className="font-bold text-blue-900 block">Need Urgent Assistance?</span>
-                  <p className="text-blue-700 leading-relaxed mt-0.5">Our helpline is active Monday to Saturday from 9:00 AM to 6:00 PM PST. Feel free to call us at +92 (42) 111-SHELF (74353) or email concierge@dreamshelf.pk.</p>
+                  <p className="text-blue-700 leading-relaxed mt-0.5">Our helpline is active Monday to Saturday from 9:00 AM to 6:00 PM GMT. Feel free to call us at +44 7828 755062 or email info@dreamshelf.co.uk.</p>
                 </div>
               </div>
             </div>
