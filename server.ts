@@ -7,8 +7,8 @@ import 'dotenv/config';
 import express from 'express';
 import path from 'path';
 import { GoogleGenAI } from '@google/genai';
-import { query, getClient } from './src/lib/db';
-import { sendOrderConfirmationEmail, sendAdminNotificationEmail } from './src/lib/email';
+import { query, getClient } from './src/lib/db.js';
+import { sendOrderConfirmationEmail, sendAdminNotificationEmail } from './src/lib/email.js';
 
 
 const app = express();
@@ -705,7 +705,8 @@ async function startServer() {
   });
 }
 
-if (!process.env.VERCEL) {
+// Only start the server locally. Vercel will just import 'app' and run it as a serverless function.
+if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
   startServer();
 }
 
