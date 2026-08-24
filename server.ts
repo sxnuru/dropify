@@ -116,9 +116,6 @@ app.get('/api/products', async (req, res) => {
     if (limit) {
       sql += ` LIMIT $${paramIndex++}`;
       params.push(parseInt(limit as string, 10));
-    } else {
-      // Hard cap to 1000. Client-side pagination prevents UI freezing now.
-      sql += ` LIMIT 1000`;
     }
 
     const { rows } = await query(sql, params);

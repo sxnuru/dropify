@@ -277,6 +277,17 @@ export default function CategoryShop({
     currentPage * PRODUCTS_PER_PAGE
   );
 
+  const getVisiblePages = (current: number, total: number) => {
+    const windowSize = 10;
+    let start = Math.max(1, current - Math.floor(windowSize / 2));
+    let end = start + windowSize - 1;
+    if (end > total) {
+      end = total;
+      start = Math.max(1, end - windowSize + 1);
+    }
+    return Array.from({ length: Math.max(0, end - start + 1) }, (_, i) => start + i);
+  };
+
   return (
     <div id="shop-root" className="space-y-6 font-sans">
       
@@ -741,17 +752,17 @@ export default function CategoryShop({
                 
                 {/* Page numbers */}
                 <div className="hidden sm:flex gap-1.5">
-                  {Array.from({ length: totalPages }).map((_, i) => (
+                  {getVisiblePages(currentPage, totalPages).map((pageNum) => (
                     <button
-                      key={i}
-                      onClick={() => handlePageChange(i + 1)}
+                      key={pageNum}
+                      onClick={() => handlePageChange(pageNum)}
                       className={`w-9 h-9 flex items-center justify-center rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                        currentPage === i + 1 
+                        currentPage === pageNum 
                           ? 'bg-slate-950 text-white shadow-md transform scale-105' 
                           : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
                       }`}
                     >
-                      {i + 1}
+                      {pageNum}
                     </button>
                   ))}
                 </div>
