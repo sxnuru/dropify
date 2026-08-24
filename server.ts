@@ -113,12 +113,13 @@ app.get('/api/products', async (req, res) => {
 
     sql += ' ORDER BY created_at DESC';
 
-    let finalLimit = 100;
     if (limit) {
-      finalLimit = parseInt(limit as string, 10);
+      sql += ` LIMIT $${paramIndex++}`;
+      params.push(parseInt(limit as string, 10));
+    } else {
+      // Hard cap to 1000. Client-side pagination prevents UI freezing now.
+      sql += ` LIMIT 1000`;
     }
-    sql += ` LIMIT $${paramIndex++}`;
-    params.push(finalLimit);
 
     const { rows } = await query(sql, params);
     const products = rows.map(normalizeProductOut);

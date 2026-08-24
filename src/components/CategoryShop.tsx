@@ -78,6 +78,7 @@ export default function CategoryShop({
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
 
   // Local state for category products loaded from Firestore
   const [categoryProducts, setCategoryProducts] = useState<Product[]>([]);
@@ -123,10 +124,19 @@ export default function CategoryShop({
   // Simulate premium skeleton loading on local facet filter updates
   const triggerLoading = () => {
     setIsLoading(true);
+    setCurrentPage(1); // Reset page when filters change
     const timer = setTimeout(() => {
       setIsLoading(false);
-    }, 350);
+    }, 400);
     return () => clearTimeout(timer);
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    setIsLoading(true);
+    setTimeout(() => setIsLoading(false), 400);
+    // Smooth scroll to top of shop root
+    document.getElementById('shop-root')?.scrollIntoView({ behavior: 'smooth' });
   };
 
   const handleCategoryChange = (cat: string) => {
@@ -259,10 +269,13 @@ export default function CategoryShop({
     if (sortBy === 'discount') return (b.discountPercent || 0) - (a.discountPercent || 0);
     return 0;
   });
-  console.log("filteredProducts =", filteredProducts.length);
-  const PRODUCTS_PER_PAGE = 60;
-
-const visibleProducts = filteredProducts.slice(0, PRODUCTS_PER_PAGE);
+  
+  const PRODUCTS_PER_PAGE = 25;
+  const totalPages = Math.ceil(filteredProducts.length / PRODUCTS_PER_PAGE);
+  const visibleProducts = filteredProducts.slice(
+    (currentPage - 1) * PRODUCTS_PER_PAGE,
+    currentPage * PRODUCTS_PER_PAGE
+  );
 
   return (
     <div id="shop-root" className="space-y-6 font-sans">
@@ -553,24 +566,16 @@ const visibleProducts = filteredProducts.slice(0, PRODUCTS_PER_PAGE);
             </button>
           </div>
 
-          {/* SKELETON LOADING SIMULATION VIEW */}
+          {/* ANIMATED LOADER */}
           {isLoading ? (
-            <div className={`grid ${viewMode === 'grid' ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'} gap-6`}>
-              {Array.from({ length: 6 }).map((_, index) => (
-                <div key={index} className={`bg-white border border-slate-100 rounded-3xl p-5 space-y-4 animate-pulse ${viewMode === 'list' ? 'flex flex-col sm:flex-row gap-6' : ''}`}>
-                  <div className={`bg-slate-100 rounded-2xl ${viewMode === 'list' ? 'w-full sm:w-40 aspect-square' : 'aspect-square w-full'}`} />
-                  <div className="flex-1 space-y-3 py-2">
-                    <div className="h-3.5 bg-slate-100 rounded w-1/4" />
-                    <div className="h-5 bg-slate-100 rounded w-3/4" />
-                    <div className="h-3.5 bg-slate-100 rounded w-full" />
-                    <div className="h-3.5 bg-slate-100 rounded w-5/6" />
-                    <div className="pt-4 flex justify-between items-center">
-                      <div className="h-5 bg-slate-100 rounded w-1/3" />
-                      <div className="h-8 bg-slate-100 rounded w-1/4" />
-                    </div>
-                  </div>
-                </div>
-              ))}
+            <div className="flex flex-col items-center justify-center py-32 space-y-5">
+              <div className="relative w-16 h-16">
+                <div className="absolute inset-0 rounded-full border-4 border-slate-100"></div>
+                <div className="absolute inset-0 rounded-full border-4 border-blue-600 border-t-transparent animate-spin"></div>
+              </div>
+              <span className="font-mono text-xs text-blue-600 font-bold uppercase tracking-widest animate-pulse">
+                Loading Products...
+              </span>
             </div>
           ) : filteredProducts.length > 0 ? (
             /* Standard Grid / List output */
@@ -716,6 +721,49 @@ const visibleProducts = filteredProducts.slice(0, PRODUCTS_PER_PAGE);
               >
                 Reset Filter Settings
               </button>
+            </div>
+          )}
+
+          {/* Pagination UI */}
+          {totalPages > 1 && !isLoading && (
+            <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-10 border-t border-slate-100 mt-8">
+              <span className="font-sans text-xs font-semibold text-slate-400">
+                Page {currentPage} of {totalPages}
+              </span>
+              <div className="flex gap-1.5">
+                <button
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50 transition-colors cursor-pointer"
+                >
+                  Previous
+                </button>
+                
+                {/* Page numbers */}
+                <div className="hidden sm:flex gap-1.5">
+                  {Array.from({ length: totalPages }).map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => handlePageChange(i + 1)}
+                      className={`w-9 h-9 flex items-center justify-center rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                        currentPage === i + 1 
+                          ? 'bg-slate-950 text-white shadow-md transform scale-105' 
+                          : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+                      }`}
+                    >
+                      {i + 1}
+                    </button>
+                  ))}
+                </div>
+
+                <button
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50 transition-colors cursor-pointer"
+                >
+                  Next
+                </button>
+              </div>
             </div>
           )}
         </div>
