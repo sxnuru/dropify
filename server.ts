@@ -125,7 +125,7 @@ app.get('/api/products', async (req, res) => {
     return res.json({ products });
   } catch (err: any) {
     console.error('[/api/products] Unexpected error:', err);
-    return res.status(500).json({ error: 'Internal server error.' });
+    return res.status(500).json({ error: 'Internal server error.', details: err.message });
   }
 });
 
@@ -145,7 +145,7 @@ app.get('/api/products/count', async (req, res) => {
     return res.json({ count: parseInt(rows[0].count, 10) });
   } catch (err: any) {
     console.error('[/api/products/count] Unexpected error:', err);
-    return res.status(500).json({ error: 'Internal server error.' });
+    return res.status(500).json({ error: 'Internal server error.', details: err.message });
   }
 });
 
