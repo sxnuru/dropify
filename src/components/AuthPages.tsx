@@ -6,14 +6,7 @@
 import React, { useState } from 'react';
 import { UserProfile } from '../types';
 import { User, Mail, Lock, Phone, ArrowLeft, Shield, Sparkles, AlertCircle } from 'lucide-react';
-import { auth, db } from '../firebase';
-import { 
-  signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword, 
-  updateProfile,
-  sendPasswordResetEmail
-} from 'firebase/auth';
-import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
+// Firebase auth removed — authentication is stubbed pending full implementation
 
 interface AuthPagesProps {
   onSuccess: () => void;
@@ -44,157 +37,25 @@ export default function AuthPages({ onSuccess, onCancel, initialView = 'login' }
     e.preventDefault();
     setError('');
     setSuccess('');
-
-    if (!email) {
-      setError('Email address is required.');
-      return;
-    }
-    if (!validateEmail(email)) {
-      setError('Please provide a valid email structure.');
-      return;
-    }
-    if (!password) {
-      setError('Secure access password is required.');
-      return;
-    }
-    if (password.length < 6) {
-      setError('Access credentials must exceed 5 characters.');
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const firebaseUser = userCredential.user;
-      
-      console.log("[handleLoginSubmit] Successfully authenticated via Firebase Auth.");
-      console.log("- Firebase UID:", firebaseUser.uid);
-      console.log("- email:", firebaseUser.email || email);
-      setSuccess('Successfully authenticated! Redirecting to home...');
-      setTimeout(() => {
-        setIsLoading(false);
-        onSuccess();
-      }, 800);
-    } catch (err: any) {
-      setIsLoading(false);
-      console.error(err);
-      if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found') {
-        setError('Incorrect email address or password. Please try again.');
-      } else if (err.code === 'auth/too-many-requests') {
-        setError('This account has been temporarily disabled due to too many failed login attempts. Please try again later.');
-      } else {
-        setError(err.message || 'Authentication error. Please check your credentials.');
-      }
-    }
+    // Authentication is under development. In the interim, checkout works without an account
+    // — customers provide their email directly at checkout and receive confirmation emails.
+    setError('Account-based login is coming soon. You can still shop and checkout as a guest by entering your email at checkout — no account required!');
   };
 
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setSuccess('');
-
-    if (!fullName) {
-      setError('Full legal name is required.');
-      return;
-    }
-    if (!email) {
-      setError('Email address is required.');
-      return;
-    }
-    if (!validateEmail(email)) {
-      setError('Please provide a valid email structure.');
-      return;
-    }
-    if (!phone) {
-      setError('Contact phone coordinate is required.');
-      return;
-    }
-    if (!password) {
-      setError('Security password is required.');
-      return;
-    }
-    if (password.length < 6) {
-      setError('Security credentials must be 6+ characters.');
-      return;
-    }
-    if (password !== confirmPassword) {
-      setError('Credential validation mismatch.');
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const firebaseUser = userCredential.user;
-      await updateProfile(firebaseUser, { displayName: fullName });
-      
-      // Provision/write customer registration record in Firestore users collection
-      const userDocRef = doc(db, 'users', firebaseUser.uid);
-      const userDocSnap = await getDoc(userDocRef);
-      if (!userDocSnap.exists()) {
-        await setDoc(userDocRef, {
-          uid: firebaseUser.uid,
-          fullName: fullName,
-          email: email,
-          phoneNumber: phone,
-          role: 'customer',
-          createdAt: serverTimestamp()
-        });
-      }
-      
-      setSuccess('Account provisioned successfully. Logging you in...');
-      setTimeout(() => {
-        setIsLoading(false);
-        console.log("[handleRegisterSubmit] Registered new user.");
-        console.log("- Firebase UID:", firebaseUser.uid);
-        console.log("- email:", email);
-        console.log("- Default Firestore role set: customer");
-        onSuccess();
-      }, 1000);
-    } catch (err: any) {
-      setIsLoading(false);
-      console.error(err);
-      if (err.code === 'auth/email-already-in-use') {
-        setError('An account with this email address already exists.');
-      } else if (err.code === 'auth/invalid-email') {
-        setError('Please check the structure of your email address.');
-      } else if (err.code === 'auth/weak-password') {
-        setError('The password chosen is too weak. Please use a stronger password.');
-      } else {
-        setError(err.message || 'Error provisioning account. Please try again.');
-      }
-    }
+    // Authentication is under development.
+    setError('Account registration is coming soon. No account is needed to shop — just add items to cart and enter your email at checkout!');
   };
 
   const handleForgotSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setSuccess('');
-
-    if (!email) {
-      setError('Email address is required to locate your credentials.');
-      return;
-    }
-    if (!validateEmail(email)) {
-      setError('Invalid email directory path.');
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      await sendPasswordResetEmail(auth, email);
-      setSuccess('A secure reset link has been dispatched to your email.');
-      setIsLoading(false);
-      setEmail('');
-    } catch (err: any) {
-      setIsLoading(false);
-      console.error(err);
-      if (err.code === 'auth/user-not-found') {
-        setError('No account matches this email directory path.');
-      } else {
-        setError(err.message || 'Error processing reset request.');
-      }
-    }
+    // Authentication is under development.
+    setError('Password recovery is coming soon. For urgent account issues, contact support@dreamshelf.co.uk');
   };
 
   return (

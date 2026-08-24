@@ -13,8 +13,6 @@ import {
   TrendingUp, DollarSign, Star, CheckCircle, Menu, Filter, ArrowUpDown,
   UserCheck, UserMinus, EyeOff, Calendar, Copy, Percent, Layers
 } from 'lucide-react';
-import { auth } from '../firebase';
-import { signOut } from 'firebase/auth';
 import { getProductImage, isFallbackImage } from '../utils/image';
 
 interface AdminDashboardProps {
@@ -618,7 +616,7 @@ export default function AdminDashboard({
               if (onLogout) {
                 onLogout();
               } else {
-                signOut(auth).catch(console.error);
+                window.location.href = '/';
               }
             }}
             className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-900 rounded-xl font-bold text-slate-300 transition-all cursor-pointer"

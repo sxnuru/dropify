@@ -21,7 +21,7 @@ import {
   getNewProducts, 
   getCategoryProductCount,
   getProductsByCategory
-} from '../firebaseProducts';
+} from '../lib/products';
 
 interface HomePageProps {
   onNavigateToShop: (category?: string) => void;

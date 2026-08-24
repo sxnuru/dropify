@@ -1,4 +1,3 @@
-import { PRODUCTS } from './data';
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -6,7 +5,7 @@ import { PRODUCTS } from './data';
 
 import React, { useState, useEffect } from 'react';
 import { Product, CartItem, Order, UserProfile } from './types';
-import { getProducts, addProduct, updateProduct, deleteProduct, getProductById, searchProducts, getFeaturedProducts } from './firebaseProducts';
+import { getProducts, addProduct, updateProduct, deleteProduct, getProductById, getFeaturedProducts } from './lib/products';
 import HomePage from './components/HomePage';
 import CategoryShop from './components/CategoryShop';
 import ProductDetails from './components/ProductDetails';
@@ -17,11 +16,9 @@ import ContactPage from './components/ContactPage';
 import AuthPages from './components/AuthPages';
 import SellerDashboard from './components/SellerDashboard';
 import AdminDashboard from './components/AdminDashboard';
+import TrackOrderView from './components/TrackOrderView';
 import { formatPrice } from './utils/currency';
 import { getProductImage } from './utils/image';
-import { auth, db } from './firebase';
-import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { doc, getDoc, collection, onSnapshot, query, where, setDoc } from 'firebase/firestore';
 
 import {
   ShoppingBag, Heart, Search, Sparkles, User,
@@ -67,7 +64,7 @@ const megaMenuColumns = [
 
 export default function App() {
   // Navigation & Screen Control
-  const [currentTab, setCurrentTab] = useState<'home' | 'shop' | 'product' | 'style' | 'account' | 'brands' | 'contact' | 'auth' | 'seller-hub' | 'admin'>('home');
+  const [currentTab, setCurrentTab] = useState<'home' | 'shop' | 'product' | 'style' | 'account' | 'brands' | 'contact' | 'auth' | 'seller-hub' | 'admin' | 'track-order'>('home');
   const [accountSubTab, setAccountSubTab] = useState<any>('profile');
   const [accountTrackingOrderId, setAccountTrackingOrderId] = useState<string | null>(null);
   const [categoryFilter, setCategoryFilter] = useState('All');
@@ -103,7 +100,7 @@ export default function App() {
   // Last removed item for Undo
   const [lastRemovedItem, setLastRemovedItem] = useState<CartItem | null>(null);
   const [showUndoToast, setShowUndoToast] = useState(false);
-  const [isAuthInitializing, setIsAuthInitializing] = useState(true);
+  // No Firebase auth — admin access is open directly via /admin URL (auth can be added later)
 
   // Dynamic User, Orders and Browsing History States
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
@@ -129,22 +126,17 @@ export default function App() {
     });
   };
 
-  const handleLogout = async () => {
-    try {
-      await signOut(auth);
-      setCurrentUser(null);
-      console.log("[handleLogout] Successfully signed out. Cleared currentUser state.");
-      setCart([]);
-      setWishlist([]);
-      setOrdersList([]);
-      setRecentlyViewedIds([]);
-      setSaveForLater([]);
-      setCurrentTab('home');
-      setIsProfileDropdownOpen(false);
-      window.history.pushState(null, '', '/');
-    } catch (error) {
-      console.error("Error signing out:", error);
-    }
+  const handleLogout = () => {
+    setCurrentUser(null);
+    setCart([]);
+    setWishlist([]);
+    setOrdersList([]);
+    setRecentlyViewedIds([]);
+    setSaveForLater([]);
+    setCurrentTab('home');
+    setIsProfileDropdownOpen(false);
+    window.history.pushState(null, '', '/');
+    console.log('[handleLogout] Cleared session state.');
   };
 
   // Load upsell products once on mount
@@ -206,173 +198,16 @@ export default function App() {
     };
   }, [currentTab]);
 
-  // Listen to Firestore Orders (real-time sync)
-  useEffect(() => {
-    let unsubscribeOrders: () => void = () => { };
-
-    function initOrdersSync() {
-      try {
-        let q;
-        if (currentUser?.role === 'admin') {
-          q = query(collection(db, "orders"));
-        } else if (currentUser) {
-          q = query(collection(db, "orders"), where("userId", "==", currentUser.uid));
-        } else {
-          setOrdersList([]);
-          return;
-        }
-
-        unsubscribeOrders = onSnapshot(q, (snapshot) => {
-          const orders: Order[] = [];
-          snapshot.forEach((doc) => {
-            orders.push({
-              id: doc.id,
-              ...doc.data()
-            } as Order);
-          });
-          orders.sort((a, b) => b.date.localeCompare(a.date));
-          setOrdersList(orders);
-        });
-      } catch (error) {
-        console.error("Error setting up real-time orders listener:", error);
-      }
-    }
-
-    initOrdersSync();
-    return () => {
-      unsubscribeOrders();
-    };
-  }, [currentUser]);
-
-  // Listen to Firestore Users/Customers collection (real-time sync)
-  useEffect(() => {
-    let unsubscribeUsers: () => void = () => { };
-
-    function initUsersSync() {
-      try {
-        if (currentUser?.role === 'admin') {
-          unsubscribeUsers = onSnapshot(collection(db, "users"), (snapshot) => {
-            const users: any[] = [];
-            snapshot.forEach((doc) => {
-              const data = doc.data();
-              if (data.role === 'customer' || !data.role) {
-                users.push({
-                  id: doc.id,
-                  uid: doc.id,
-                  ...data
-                });
-              }
-            });
-            setUsersList(users);
-          });
-        } else {
-          setUsersList([]);
-        }
-      } catch (error) {
-        console.error("Error setting up users sync listener:", error);
-      }
-    }
-
-    initUsersSync();
-    return () => {
-      unsubscribeUsers();
-    };
-  }, [currentUser]);
-
-  // Redirect to login if account dashboard is accessed while logged out
-  React.useEffect(() => {
-    if (currentTab === 'account' && !currentUser) {
-      setCurrentTab('auth');
-    }
-  }, [currentTab, currentUser]);
-
-  // Pathname route observer to handle "/admin" pathing with security guards
+  // Pathname route observer — admin accessible directly at /admin (no auth check)
   React.useEffect(() => {
     const handleLocationCheck = () => {
       if (window.location.pathname === '/admin') {
-        if (isAuthInitializing) {
-          return;
-        }
-        if (!currentUser) {
-          window.history.pushState(null, '', '/');
-          setCurrentTab('auth');
-        } else if (currentUser.role !== 'admin') {
-          window.history.pushState(null, '', '/');
-          setCurrentTab('home');
-        } else {
-          setCurrentTab('admin');
-        }
+        setCurrentTab('admin');
       }
     };
     handleLocationCheck();
     window.addEventListener('popstate', handleLocationCheck);
     return () => window.removeEventListener('popstate', handleLocationCheck);
-  }, [isAuthInitializing, currentUser]);
-
-  // Listen to Firebase Auth state updates and fetch user role from Firestore
-  React.useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      try {
-        if (firebaseUser) {
-          const docRef = doc(db, 'users', firebaseUser.uid);
-          const docSnap = await getDoc(docRef);
-          let userRole = 'customer';
-          let dbName = '';
-          let dbPhone = '';
-          if (docSnap.exists()) {
-            userRole = docSnap.data().role || 'customer';
-            dbName = docSnap.data().fullName || '';
-            dbPhone = docSnap.data().phoneNumber || '';
-          }
-
-          const profile: UserProfile = {
-            fullName: firebaseUser.displayName || dbName || 'DreamShelf Customer',
-            email: firebaseUser.email || '',
-            phone: firebaseUser.phoneNumber || dbPhone || '+44 7700 900123',
-            status: userRole === 'admin' ? 'Administrator' : 'Platinum Tier',
-            memberSince: 'January 2026',
-            loyaltyPoints: 1250,
-            role: userRole,
-            uid: firebaseUser.uid
-          };
-          setCurrentUser(profile);
-          console.log("[onAuthStateChanged] Logged in user resolved:");
-          console.log("- Firebase UID:", firebaseUser.uid);
-          console.log("- email:", firebaseUser.email);
-          console.log("- Firestore role:", userRole);
-          console.log("- currentUser.role:", profile.role);
-
-          if (userRole === 'admin') {
-            if (window.location.pathname === '/admin') {
-              setCurrentTab('admin');
-            }
-          } else {
-            if (window.location.pathname === '/admin') {
-              window.history.pushState(null, '', '/');
-              setCurrentTab('home');
-            }
-          }
-        } else {
-          setCurrentUser(null);
-          console.log("[onAuthStateChanged] No authenticated user. cleared currentUser.");
-          if (window.location.pathname === '/admin') {
-            window.history.pushState(null, '', '/');
-            setCurrentTab('auth');
-          }
-        }
-      } catch (error) {
-        console.error("Error checking user role in Firestore:", error);
-        setCurrentUser(null);
-        console.log("[onAuthStateChanged] Error occurred. cleared currentUser.");
-        if (window.location.pathname === '/admin') {
-          window.history.pushState(null, '', '/');
-          setCurrentTab('auth');
-        }
-      } finally {
-        setIsAuthInitializing(false);
-      }
-    });
-    return () => unsubscribe();
   }, []);
 
   // Checkout Flow & Stepper states
@@ -382,6 +217,8 @@ export default function App() {
   const [isAddressValidating, setIsAddressValidating] = useState(false);
   const [isAddressValidated, setIsAddressValidated] = useState(false);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'card' | 'biometric' | 'cod'>('cod');
+  const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+  const [placeOrderError, setPlaceOrderError] = useState('');
 
   const [shippingName, setShippingName] = useState('');
   const [shippingStreet, setShippingStreet] = useState('');
@@ -390,12 +227,14 @@ export default function App() {
   const [shippingState, setShippingState] = useState('');
   const [shippingZip, setShippingZip] = useState('');
   const [shippingPhone, setShippingPhone] = useState('');
+  const [checkoutEmail, setCheckoutEmail] = useState('');
 
   // Sync shipping info with active profile changes
   React.useEffect(() => {
     if (currentUser) {
       setShippingName(currentUser.fullName);
       setShippingPhone(currentUser.phone);
+      setCheckoutEmail(currentUser.email || '');
     }
   }, [currentUser]);
 
@@ -525,12 +364,12 @@ export default function App() {
     setWishlist((prev) => prev.filter((p) => p.id !== product.id));
   };
 
-  // Firestore Curation Callbacks
+  // Product CRUD callbacks — call server API
   const handleAddProduct = async (newProduct: Product) => {
     try {
       await addProduct(newProduct);
     } catch (error) {
-      console.error("Error adding product to Firestore:", error);
+      console.error('[handleAddProduct] Error:', error);
     }
   };
 
@@ -538,7 +377,7 @@ export default function App() {
     try {
       await updateProduct(updatedProduct);
     } catch (error) {
-      console.error("Error updating product in Firestore:", error);
+      console.error('[handleEditProduct] Error:', error);
     }
   };
 
@@ -550,42 +389,39 @@ export default function App() {
         setCurrentTab('home');
       }
     } catch (error) {
-      console.error("Error deleting product from Firestore:", error);
+      console.error('[handleDeleteProduct] Error:', error);
     }
   };
 
   const handleUpdateOrderStatus = async (
     orderId: string,
-    paymentStatus?: 'Pending' | 'Paid' | 'Refunded' | 'Cancelled',
-    fulfillmentStatus?: 'Pending' | 'Processing' | 'Shipped' | 'Delivered' | 'Cancelled',
-    trackingNumber?: string
+    paymentStatus?: string,
+    fulfillmentStatus?: string,
+    _trackingNumber?: string
   ) => {
     try {
-      const { updateDoc, doc } = await import('firebase/firestore');
-      const orderRef = doc(db, 'orders', orderId);
+      const orderStatusMap: Record<string, string> = {
+        'Pending': 'confirmed',
+        'Processing': 'processing',
+        'Shipped': 'shipped',
+        'Delivered': 'delivered',
+        'Cancelled': 'cancelled',
+      };
       const updates: any = {};
-      if (paymentStatus) {
-        updates.paymentStatus = paymentStatus;
-      }
+      if (paymentStatus) updates.payment_status = paymentStatus.toLowerCase();
       if (fulfillmentStatus) {
-        updates.fulfillmentStatus = fulfillmentStatus;
-        if (fulfillmentStatus === 'Pending' || fulfillmentStatus === 'Processing') {
-          updates.status = 'processing';
-        } else if (fulfillmentStatus === 'Shipped') {
-          updates.status = 'shipped';
-        } else if (fulfillmentStatus === 'Delivered') {
-          updates.status = 'delivered';
-        } else if (fulfillmentStatus === 'Cancelled') {
-          updates.status = 'cancelled';
-        }
+        updates.fulfillment_status = fulfillmentStatus;
+        updates.order_status = orderStatusMap[fulfillmentStatus] || 'confirmed';
       }
-      if (trackingNumber !== undefined) {
-        updates.trackingNumber = trackingNumber;
-      }
-      await updateDoc(orderRef, updates);
-      console.log(`[handleUpdateOrderStatus] Updated order ${orderId} successfully.`);
+      const res = await fetch(`/api/admin/orders/${orderId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      console.log(`[handleUpdateOrderStatus] Updated order ${orderId}`);
     } catch (error) {
-      console.error("Error updating order status in Firestore:", error);
+      console.error('[handleUpdateOrderStatus] Error:', error);
     }
   };
 
@@ -603,7 +439,7 @@ export default function App() {
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     } catch (error) {
-      console.error("Error navigating to product detail view:", error);
+      console.error('[handleNavigateToProduct] Error:', error);
     }
   };
 
@@ -737,79 +573,122 @@ export default function App() {
 
   const cartTotal = Number((cartSubtotal - discountSum + taxSum + shippingSum).toFixed(2));
 
-  // Checkout Placement
-  const handlePlaceOrder = (e: React.FormEvent) => {
+  // Checkout Placement — calls server API for server-side price calculation + Supabase save + email
+  const handlePlaceOrder = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (cart.length === 0) return;
+    if (cart.length === 0 || isPlacingOrder) return;
 
-    // Generate real custom order log
-    const orderLog: Order = {
-      id: `DS-${Math.floor(10000 + Math.random() * 90000)}-2026`,
-      items: [...cart],
-      subtotal: cartSubtotal,
-      discount: discountSum,
-      tax: taxSum,
-      shipping: shippingSum,
-      total: cartTotal,
-      status: 'processing',
-      trackingNumber: `TR_UK_${Math.floor(100000000 + Math.random() * 900000000)}`,
-      estimatedDelivery: shippingSpeed === 'standard' ? '2 to 5 business days (UK Standard Delivery)' : shippingSpeed === 'express' ? '2 business days (Express Courier)' : '1 business day (Next-Day Delivery across UK)',
-      shippingAddress: {
-        fullName: shippingName,
-        street: shippingStreet,
-        city: shippingCity,
-        state: shippingState,
-        area: shippingArea,
-        zipCode: shippingZip,
-        country: 'United Kingdom',
-        phone: shippingPhone
-      },
-      paymentMethod: selectedPaymentMethod === 'cod' ? 'Cash on Delivery (COD)' : selectedPaymentMethod === 'card' ? 'Credit Card' : 'Instant Biometric Secured Token Pay',
-      date: new Date().toISOString().split('T')[0],
-      events: [
-        { name: 'Order Placed Successfully', description: selectedPaymentMethod === 'cod' ? 'Cash on Delivery order booked.' : 'Transaction processed and settled securely.', time: 'Just now', done: true },
-        { name: 'Processing & Verification', description: 'Address verified for delivery dispatch.', time: 'Just now', done: true }
-      ],
-      customerName: currentUser?.fullName || shippingName || 'Guest Customer',
-      customerEmail: currentUser?.email || 'guest@dreamshelf.co.uk',
-      paymentStatus: selectedPaymentMethod === 'cod' ? 'Pending' : 'Paid',
-      fulfillmentStatus: 'Pending',
-      userId: currentUser?.uid || 'guest'
-    };
+    const emailToUse = checkoutEmail.trim() || currentUser?.email || '';
+    if (!emailToUse || !emailToUse.includes('@')) {
+      setPlaceOrderError('Please enter a valid email address to receive your order confirmation.');
+      return;
+    }
 
-    // Save to Firestore orders collection
-    const orderDocRef = doc(db, 'orders', orderLog.id);
-    setDoc(orderDocRef, orderLog)
-      .then(() => console.log(`[handlePlaceOrder] Order ${orderLog.id} saved to Firestore.`))
-      .catch((err) => console.error("Error saving order to Firestore:", err));
+    setIsPlacingOrder(true);
+    setPlaceOrderError('');
 
-    setActiveOrder(orderLog);
-    setOrderSuccessDetails(orderLog);
-    setOrdersList((prev) => [orderLog, ...prev]);
-    setCart([]); // Clear cart
-    setAppliedDiscount(0);
-    setPromoCode('');
-    setIsCheckoutOpen(false);
-    setIsCartOpen(false);
-    setCheckoutStep(1);
-    setIsAddressValidated(false);
-    setShippingSpeed('standard');
-    setShowOrderSuccessModal(true);
+    try {
+      const payload = {
+        customer_name: shippingName.trim(),
+        customer_email: emailToUse,
+        customer_phone: shippingPhone.trim(),
+        shipping_address: {
+          fullName: shippingName,
+          street: shippingStreet,
+          area: shippingArea,
+          city: shippingCity,
+          state: shippingState,
+          zipCode: shippingZip,
+          country: 'United Kingdom',
+        },
+        items: cart.map(item => ({
+          product_id: item.product.id,
+          selected_color: item.selectedColor,
+          selected_size: item.selectedSize,
+          quantity: item.quantity,
+        })),
+        payment_method: selectedPaymentMethod,
+        shipping_speed: shippingSpeed,
+        promo_discount_percent: appliedDiscount,
+      };
+
+      const res = await fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setPlaceOrderError(data.error || 'Order failed. Please try again.');
+        setIsPlacingOrder(false);
+        return;
+      }
+
+      // Build a local Order object for the success modal and orders list
+      const orderLog: Order = {
+        id: data.tracking_id,
+        items: [...cart],
+        subtotal: data.subtotal,
+        discount: data.discount,
+        tax: data.tax,
+        shipping: data.shipping_cost,
+        total: data.total,
+        status: 'processing',
+        trackingNumber: data.tracking_id,
+        estimatedDelivery: shippingSpeed === 'standard' ? '2–5 business days (UK Standard)' :
+          shippingSpeed === 'express' ? '2 business days (Express Courier)' : '1 business day (Next-Day Delivery)',
+        shippingAddress: {
+          fullName: shippingName,
+          street: shippingStreet,
+          city: shippingCity,
+          state: shippingState,
+          area: shippingArea,
+          zipCode: shippingZip,
+          country: 'United Kingdom',
+          phone: shippingPhone,
+        },
+        paymentMethod: selectedPaymentMethod === 'cod' ? 'Cash on Delivery (COD)' :
+          selectedPaymentMethod === 'card' ? 'Credit / Debit Card' : 'Instant Biometric Secured Token Pay',
+        date: data.created_at ? data.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
+        events: [
+          { name: 'Order Placed Successfully', description: 'Confirmed and saved to our system.', time: 'Just now', done: true },
+          { name: 'Processing & Verification', description: 'Address verified for dispatch.', time: 'Just now', done: true },
+        ],
+        customerName: shippingName,
+        customerEmail: emailToUse,
+        paymentStatus: data.payment_status === 'paid' ? 'Paid' : 'Pending',
+        fulfillmentStatus: 'Pending',
+        userId: currentUser?.uid || 'guest',
+      };
+
+      setActiveOrder(orderLog);
+      setOrderSuccessDetails(orderLog);
+      setOrdersList(prev => [orderLog, ...prev]);
+      setCart([]);
+      setAppliedDiscount(0);
+      setPromoCode('');
+      setIsCheckoutOpen(false);
+      setIsCartOpen(false);
+      setCheckoutStep(1);
+      setIsAddressValidated(false);
+      setShippingSpeed('standard');
+      setPlaceOrderError('');
+      setShowOrderSuccessModal(true);
+      console.log(`[handlePlaceOrder] Order placed: ${data.tracking_id}`);
+    } catch (err) {
+      console.error('[handlePlaceOrder] Network error:', err);
+      setPlaceOrderError('Network error. Please check your connection and try again.');
+    } finally {
+      setIsPlacingOrder(false);
+    }
   };
 
-  const isStep1Valid = !!(shippingName.trim() && shippingPhone.trim() && shippingStreet.trim() && shippingCity.trim() && shippingZip.trim());
+  const isStep1Valid = !!(shippingName.trim() && shippingPhone.trim() && shippingStreet.trim() && shippingCity.trim() && shippingZip.trim() && checkoutEmail.trim());
 
-  if (isAuthInitializing && window.location.pathname === '/admin') {
-    return (
-      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-xs font-sans text-slate-400 select-none">
-        <div className="w-6 h-6 border-2 border-slate-800 border-t-emerald-400 rounded-full animate-spin mb-4" />
-        <span className="font-display font-light text-white tracking-[0.25em] uppercase text-[10px]">DREAM<span className="font-bold text-emerald-400">SHELF</span></span>
-        <span className="text-[8px] font-mono text-slate-600 tracking-wider mt-1 uppercase">Initializing Secure Credentials Directory</span>
-      </div>
-    );
-  }
-
-  if (currentTab === 'admin' && currentUser?.role === 'admin') {
+  // Admin dashboard — accessible directly (no auth check — auth can be added later)
+  if (currentTab === 'admin') {
     return (
       <AdminDashboard
         productsList={productsList}
@@ -1774,6 +1653,18 @@ export default function App() {
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 text-xs font-sans">
+                    <div className="md:col-span-2">
+                      <label className="block text-[9px] font-mono text-slate-400 uppercase mb-1 font-bold">Email Address <span className="text-red-500">*</span></label>
+                      <input
+                        type="email"
+                        required
+                        placeholder="your@email.com — for order confirmation"
+                        value={checkoutEmail}
+                        onChange={(e) => setCheckoutEmail(e.target.value)}
+                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 hover:border-slate-300 focus:bg-white rounded-xl focus:outline-none focus:border-blue-500 transition-colors font-mono text-xs"
+                      />
+                      <span className="block text-[9px] text-slate-400 mt-1">We'll send your order confirmation and tracking ID here.</span>
+                    </div>
                     <div>
                       <label className="block text-[9px] font-mono text-slate-400 uppercase mb-1 font-bold">Full Name</label>
                       <input
@@ -2062,12 +1953,20 @@ export default function App() {
                     By clicking authorize, you agree to our Terms of Sale and authorize payment to complete your purchase securely.
                   </p>
 
+                  {/* Error message */}
+                  {placeOrderError && (
+                    <div className="bg-red-50 border border-red-100 text-red-700 text-xs p-3 rounded-xl text-center font-medium">
+                      {placeOrderError}
+                    </div>
+                  )}
+
                   {/* Action Buttons */}
                   <div className="flex gap-2.5 pt-2">
                     <button
                       type="button"
                       onClick={() => setCheckoutStep(2)}
-                      className="group flex-1 py-3 bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs font-sans font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                      disabled={isPlacingOrder}
+                      className="group flex-1 py-3 bg-slate-100 text-slate-700 hover:bg-slate-200 disabled:opacity-50 text-xs font-sans font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                     >
                       <span className="transform group-hover:-translate-x-1 transition-transform duration-200">←</span>
                       <span>Back to Payment</span>
@@ -2075,9 +1974,14 @@ export default function App() {
                     <button
                       id="place-order-btn"
                       type="submit"
-                      className="flex-1 py-3 bg-slate-950 hover:bg-blue-600 text-white text-xs font-sans font-bold rounded-xl transition-all shadow-md uppercase tracking-wider active:scale-95"
+                      disabled={isPlacingOrder}
+                      className="flex-1 py-3 bg-slate-950 hover:bg-blue-600 disabled:bg-slate-300 disabled:cursor-not-allowed text-white text-xs font-sans font-bold rounded-xl transition-all shadow-md uppercase tracking-wider active:scale-95 flex items-center justify-center gap-2"
                     >
-                      AUTHORIZE & PLACE ORDER
+                      {isPlacingOrder ? (
+                        <><span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />PLACING ORDER...</>
+                      ) : (
+                        'AUTHORIZE & PLACE ORDER'
+                      )}
                     </button>
                   </div>
                 </div>

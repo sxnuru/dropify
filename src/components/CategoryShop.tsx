@@ -12,7 +12,7 @@ import {
 import ProductCard from './ProductCard';
 import { formatPrice } from '../utils/currency';
 import { getProductImage } from '../utils/image';
-import { getProductsByCategory } from '../firebaseProducts';
+import { getProductsByCategory } from '../lib/products';
 
 interface CategoryShopProps {
   onNavigateToProduct: (id: string) => void;

@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import ProductCard from './ProductCard';
 import { getCleanProductImages } from '../utils/image';
-import { getProductsByCategory, getProductById } from '../firebaseProducts';
+import { getProductsByCategory, getProductById } from '../lib/products';
 interface ProductDetailsProps {
   product: Product;
   productsList?: Product[];

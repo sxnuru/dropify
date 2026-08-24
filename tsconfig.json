@@ -22,6 +22,7 @@
     "noEmit": true,
 
     "types": [
+      "vite/client",
       "react",
       "react-dom",
       "node"
@@ -34,13 +35,17 @@
 
   "include": [
     "src",
-    "scripts",
     "*.ts",
     "*.tsx"
   ],
 
   "exclude": [
     "node_modules",
-    "dist"
+    "dist",
+    "scripts",
+    "src/firebase.ts",
+    "src/firebaseProducts.ts",
+    "migrateImages.ts",
+    "repairCategories.ts"
   ]
 }
