@@ -270,7 +270,7 @@ export default function CategoryShop({
     return 0;
   });
   
-  const PRODUCTS_PER_PAGE = 25;
+  const PRODUCTS_PER_PAGE = 30;
   const totalPages = Math.ceil(filteredProducts.length / PRODUCTS_PER_PAGE);
   const visibleProducts = filteredProducts.slice(
     (currentPage - 1) * PRODUCTS_PER_PAGE,
