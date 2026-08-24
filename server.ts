@@ -6,7 +6,6 @@
 import 'dotenv/config';
 import express from 'express';
 import path from 'path';
-import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
 import { query, getClient } from './src/lib/db';
 import { sendOrderConfirmationEmail, sendAdminNotificationEmail } from './src/lib/email';
@@ -114,16 +113,38 @@ app.get('/api/products', async (req, res) => {
 
     sql += ' ORDER BY created_at DESC';
 
+    let finalLimit = 100;
     if (limit) {
-      sql += ` LIMIT $${paramIndex++}`;
-      params.push(parseInt(limit as string, 10));
+      finalLimit = parseInt(limit as string, 10);
     }
+    sql += ` LIMIT $${paramIndex++}`;
+    params.push(finalLimit);
 
     const { rows } = await query(sql, params);
     const products = rows.map(normalizeProductOut);
     return res.json({ products });
   } catch (err: any) {
     console.error('[/api/products] Unexpected error:', err);
+    return res.status(500).json({ error: 'Internal server error.' });
+  }
+});
+
+/** GET /api/products/count — get total count of products */
+app.get('/api/products/count', async (req, res) => {
+  try {
+    let sql = 'SELECT COUNT(*) FROM products WHERE is_active = true';
+    const params: any[] = [];
+    const { category } = req.query;
+
+    if (category && category !== 'All') {
+      sql += ' AND category = $1';
+      params.push(category);
+    }
+
+    const { rows } = await query(sql, params);
+    return res.json({ count: parseInt(rows[0].count, 10) });
+  } catch (err: any) {
+    console.error('[/api/products/count] Unexpected error:', err);
     return res.status(500).json({ error: 'Internal server error.' });
   }
 });
@@ -664,6 +685,7 @@ Catalog: ${products.map(p => `${p.id}: ${p.name} (£${p.price})`).join('n')}`;
 
 async function startServer() {
   if (process.env.NODE_ENV !== 'production') {
+    const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: 'spa',
@@ -683,4 +705,8 @@ async function startServer() {
   });
 }
 
-startServer();
+if (!process.env.VERCEL) {
+  startServer();
+}
+
+export default app;

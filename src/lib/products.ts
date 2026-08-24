@@ -186,9 +186,10 @@ export async function deleteProduct(id: string): Promise<void> {
 
 export async function getCategoryProductCount(category: string): Promise<number> {
   try {
-    const products = await getProducts();
-    if (category === 'All') return products.length;
-    return products.filter(p => p.category === category).length;
+    const res = await fetch(`${API_BASE}/products/count?category=${encodeURIComponent(category)}`);
+    if (!res.ok) return 0;
+    const data = await res.json();
+    return data.count || 0;
   } catch {
     return 0;
   }
